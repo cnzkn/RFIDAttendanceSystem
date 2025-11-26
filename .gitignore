@@ -424,7 +424,6 @@ FodyWeavers.xsd
 # Frontend
 /frontend/node_modules
 /frontend/.DS_Store
-/frontend/dist
 /frontend/dist-ssr
 /frontend/*.local
 /frontend/count.txt
