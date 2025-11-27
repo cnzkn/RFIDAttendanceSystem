@@ -11,3 +11,4 @@ Source code for our back-end service. Communicates with devices, provides an API
 
 ## Frontend
 Source code for the user interface of the project. Offers real-time attendance status along with administrator & instructor interfaces.
+https://umutsen2662.github.io/RFIDAttendanceSystemPages/
