@@ -37,4 +37,4 @@ jobs:
           # The folder containing the build output
           # Use 'dist' or 'build' for React/Vue/Vite
           # Use '.' if you are deploying the root of the repo (static files)
-          folder: dist
+          folder: frontend/dist
