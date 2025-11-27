@@ -23,4 +23,15 @@ public class DeviceModel : IAttendanceRegistrar
     
     [ForeignKey(nameof(AssignedClassroomId))] // C# auto-map
     public virtual ClassroomModel AssignedClassroom { get; set; }
+
+
+    public DeviceDto ToDto()
+    {
+        return new DeviceDto()
+        {
+            Id = Id,
+            Classroom =  AssignedClassroom.ToDto(),
+            Fingerprint = Convert.ToBase64String(Fingerprint)
+        };
+    }
 }

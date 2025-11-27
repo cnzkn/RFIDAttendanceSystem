@@ -17,4 +17,14 @@ public class AttendeeModel
     
     [InverseProperty("Attendees")]
     public virtual List<SectionModel> AttendingSections { get; set; }
+
+
+    public AttendeeDto ToDto()
+    {
+        return new AttendeeDto()
+        {
+            StudentID = StudentID,
+            FullName = FullName,
+        };
+    }
 }

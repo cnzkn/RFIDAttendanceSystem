@@ -7,4 +7,13 @@ public class ClassroomModel
     
     [Required]
     public string Name { get; set; }
+
+
+    public ClassroomDto ToDto()
+    {
+        return new ClassroomDto()
+        {
+            Name = Name
+        };
+    }
 }

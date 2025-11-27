@@ -10,4 +10,14 @@ public class CourseModel
     
     [Required]
     public string Name { get; set; }
+
+
+    public CourseDto ToDto()
+    {
+        return new CourseDto()
+        {
+            Code = Code,
+            Name = Name
+        };
+    }
 }

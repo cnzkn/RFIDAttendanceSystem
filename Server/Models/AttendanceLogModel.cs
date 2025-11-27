@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+
 namespace CloudAPI.Models;
 
 public class AttendanceLogModel
@@ -21,6 +23,9 @@ public class AttendanceLogModel
     public Guid MarkedById { get; set; }
     
     [Required]
+    public string MarkedByType { get; set; }
+    
+    [Required]
     public bool IsPresent { get; set; }
     
     
@@ -29,4 +34,19 @@ public class AttendanceLogModel
     
     [ForeignKey(nameof(AttendeeId))] // C# auto-map
     public virtual AttendeeModel Attendee { get; set; }
+
+    [NotMapped]
+    public IAttendanceRegistrar? Registrar
+    {
+        get => _resolver.ResolveAsync(MarkedById, MarkedByType).GetAwaiter().GetResult();
+        set => (MarkedById, MarkedByType) = _resolver.GetProperties(value);
+    }
+    
+    [NotMapped]
+    private IEntityResolver<IAttendanceRegistrar, Guid> _resolver;
+
+    internal void AttachResolver(IEntityResolver<IAttendanceRegistrar, Guid> resolver)
+    {
+        _resolver = resolver;
+    }
 }

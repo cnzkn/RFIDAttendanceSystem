@@ -20,4 +20,15 @@ public class TimetableModel
     
     [ForeignKey(nameof(ClassroomId))] // C# auto-map
     public virtual ClassroomModel Classroom { get; set; }
+
+
+    public TimetableDto ToDto()
+    {
+        return new TimetableDto()
+        {
+            Classroom = Classroom.ToDto(),
+            Section = CourseSection.ToDto(),
+            Timeslot = Timeslot
+        };
+    }
 }
