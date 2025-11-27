@@ -8,18 +8,19 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    devtools(),
-    tanstackRouter({
-      target: 'react',
-      autoCodeSplitting: true,
-    }),
-    viteReact(),
-    tailwindcss(),
-  ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    base: "/RFIDAttendanceSystemPages/",
+    plugins: [
+        devtools(),
+        tanstackRouter({
+            target: 'react',
+            autoCodeSplitting: true,
+        }),
+        viteReact(),
+        tailwindcss(),
+    ],
+    resolve: {
+        alias: {
+            '@': fileURLToPath(new URL('./src', import.meta.url)),
+        },
     },
-  },
 })
