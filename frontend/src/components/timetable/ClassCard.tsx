@@ -9,7 +9,7 @@ export function ClassCard({ entry }: ClassCardProps) {
 	return (
 		<Link
 			to={"/session/$id"}
-			params={{ id: entry.attendanceSessionId }}
+			params={{ id: entry.id }}
 			className=" group relative block w-full h-full border-2 border-black bg-blue-400 transition-all duration-200 ease-out
                         overflow-hidden shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] 
                         hover:translate-x-[-1px] hover:translate-y-[-1px] hover:bg-blue-500 flex flex-col justify-between p-2"
@@ -17,7 +17,7 @@ export function ClassCard({ entry }: ClassCardProps) {
 			<div className="absolute top-0 left-0 w-full h-1 bg-black opacity-20" />
 
 			<div className="font-black text-xl uppercase leading-tight break-words z-10 group-hover:text-white transition-colors">
-				{entry.courseName}
+				{entry.course}
 			</div>
 
 			<div className="flex justify-between items-end mt-2 z-10 text-lg">

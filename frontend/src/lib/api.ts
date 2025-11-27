@@ -30,8 +30,9 @@ export interface TimetableEntry {
 	course: string;
 	section: string;
 	room: string;
-	day: number;
-	hour: number;
+	dayOfWeek: number;
+	startHour: number;
+	endHour: number;
 }
 
 // --- WebSocket Message Types ---
