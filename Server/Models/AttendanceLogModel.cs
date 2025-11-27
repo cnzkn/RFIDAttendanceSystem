@@ -1,6 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
 namespace CloudAPI.Models;
 
 public class AttendanceLogModel
@@ -12,20 +9,24 @@ public class AttendanceLogModel
     public DateTime Date { get; set; }
     
     [Required]
-    public Guid SectionId { get; set; }
+    public Guid TimetableId { get; set; }
+    
+    [Required]
+    public int WeekNumber { get; set; }
     
     [Required]
     public Guid AttendeeId { get; set; }
     
-    // TODO: Need to hold who marked the attendance (Device/Instructor)
+    [Required]
+    public Guid MarkedById { get; set; }
     
     [Required]
     public bool IsPresent { get; set; }
     
     
-    [ForeignKey("SectionId")] // C# auto-map
-    public SectionModel Section { get; set; }
+    [ForeignKey(nameof(TimetableId))] // C# auto-map
+    public virtual TimetableModel Timetable { get; set; }
     
-    [ForeignKey("AttendeeId")] // C# auto-map
-    public AttendeeModel Attendee { get; set; }
+    [ForeignKey(nameof(AttendeeId))] // C# auto-map
+    public virtual AttendeeModel Attendee { get; set; }
 }

@@ -1,6 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
 namespace CloudAPI.Models;
 
 public class AttendeeModel
@@ -16,4 +13,8 @@ public class AttendeeModel
     
     [Required]
     public byte[] CardUID { get; set; }
+    
+    
+    [InverseProperty("Attendees")]
+    public virtual List<SectionModel> AttendingSections { get; set; }
 }
