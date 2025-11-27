@@ -10,6 +10,7 @@ builder.WebHost.ConfigureKestrel(options =>
     });
 });
 
+//builder.Services.AddEntityFrameworkProxies();
 builder.Services.AddDbContext<DatabaseContext>(options =>
 {
     var host = Environment.GetEnvironmentVariable("DB_HOST");
@@ -20,11 +21,15 @@ builder.Services.AddDbContext<DatabaseContext>(options =>
     var ssl = Environment.GetEnvironmentVariable("DB_SECURE") ?? "Require";
 
     options.UseNpgsql($"Host={host};Port={port};Username={user};Password={pass};Database={name};SslMode={ssl};Trust Server Certificate=true");
+    options.UseLazyLoadingProxies();
 });
 
 builder.Services.AddControllers();
+
+builder.Services.AddScoped<IEntityResolver<IAttendanceRegistrar, Guid>, AttendanceRegistrarEntityResolver>();
 builder.Services.AddScoped<ICertificateValidator, DeviceCertificateValidator>();
 builder.Services.AddSingleton<IModuleHandler, ModuleHandler>();
+
 
 var app = builder.Build();
 
