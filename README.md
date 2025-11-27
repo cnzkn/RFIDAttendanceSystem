@@ -9,5 +9,5 @@ Contains the source code for our hardware, responsible for scanning ID cards and
 ## Server
 Source code for our back-end service. Communicates with devices, provides an API for our front-end and coordinates project functionality. 
 
-## Web
+## Frontend
 Source code for the user interface of the project. Offers real-time attendance status along with administrator & instructor interfaces.
