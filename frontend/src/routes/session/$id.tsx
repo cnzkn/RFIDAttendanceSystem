@@ -1,7 +1,6 @@
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Socket } from "socket.io-client";
 import { HeaderCell, type SortKey } from "@/components/session/HeaderCell";
 import { SessionInfoGrid } from "@/components/session/SessionInfoGrid";
 import { StudentRow } from "@/components/session/StudentRow";
@@ -13,16 +12,15 @@ import {
 	joinSession,
 	type Student,
 	updateStudentStatus,
+	type WSMessage,
 } from "@/lib/api";
 
-// 1. Define Query Options
 const sessionQueryOptions = (sessionId: string) =>
 	queryOptions({
 		queryKey: ["session", sessionId],
 		queryFn: () => fetchSessionDetails(sessionId),
 	});
 
-// 2. Route Definition
 export const Route = createFileRoute("/session/$id")({
 	component: RouteComponent,
 	loader: ({ context: { queryClient }, params: { id } }) =>
@@ -37,7 +35,7 @@ function RouteComponent() {
 	const [students, setStudents] = useState<Student[]>([]);
 	const [currentRoom, setCurrentRoom] = useState(sessionData.room || "");
 	const [newRoom, setNewRoom] = useState("");
-	const socketRef = useRef<Socket | null>(null);
+	const socketRef = useRef<WebSocket | null>(null);
 
 	// --- Sorting State ---
 	const [sortConfig, setSortConfig] = useState<{
@@ -95,22 +93,40 @@ function RouteComponent() {
 	useEffect(() => {
 		const socket = createSocketConnection();
 		socketRef.current = socket;
-		socket.connect();
 
-		socket.on("connect", () => joinSession(socket, id));
-		socket.on("initial_list", (data) => setStudents(data.students));
-		socket.on("student_updated", (updatedStudent) => {
-			setStudents((prev) =>
-				prev.map((s) =>
-					s.studentId === updatedStudent.studentId
-						? { ...s, ...updatedStudent }
-						: s,
-				),
-			);
-		});
+		socket.onopen = () => {
+			joinSession(socket, id);
+		};
 
+		socket.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data) as WSMessage;
+
+				if (data.type === "initial_list") {
+					setStudents(data.students);
+				} else if (data.type === "student_updated") {
+					// Update local state based on the specific student ID
+					setStudents((prev) =>
+						prev.map((s) =>
+							s.studentId === data.studentId
+								? {
+										...s,
+										status: data.status as "present" | "absent" | "nothing",
+										timestamp: data.timestamp,
+										isManual: data.isManual,
+									}
+								: s,
+						),
+					);
+				}
+			} catch (err) {
+				console.error("Failed to parse websocket message:", err);
+			}
+		};
+
+		// 4. Cleanup
 		return () => {
-			socket.disconnect();
+			socket.close();
 			socketRef.current = null;
 		};
 	}, [id]);
@@ -154,7 +170,7 @@ function RouteComponent() {
 						<div className="grid grid-cols-1 md:grid-cols-[1fr_300px_140px]">
 							<div
 								className="col-span-1 md:col-span-3 grid grid-cols-subgrid gap-4 bg-gray-100 p-3 
-                                            font-bold text-sm uppercase tracking-wider border-b-4 border-black"
+                                        font-bold text-sm uppercase tracking-wider border-b-4 border-black"
 							>
 								<HeaderCell
 									label="Student Details"

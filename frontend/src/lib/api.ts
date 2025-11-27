@@ -1,5 +1,3 @@
-import { io, type Socket } from "socket.io-client";
-
 export function logOut() {
 	localStorage.removeItem("token");
 }
@@ -8,6 +6,7 @@ export function logIn(username: string, password: string) {
 	localStorage.setItem("token", `${username}:${password}`);
 }
 
+// --- Types ---
 export interface Student {
 	studentId: string;
 	name: string;
@@ -27,16 +26,41 @@ export interface SessionDetails {
 }
 
 export interface TimetableEntry {
-	attendanceSessionId: string;
-	courseName: string;
+	id: string;
+	course: string;
 	section: string;
 	room: string;
-	dayOfWeek: number;
-	startHour: number;
-	endHour: number;
+	day: number;
+	hour: number;
 }
 
+// --- WebSocket Message Types ---
+export type WSMessage =
+	| { type: "initial_list"; attendanceSessionId: string; students: Student[] }
+	| {
+			type: "student_updated";
+			studentId: string;
+			status: string;
+			timestamp: string | null;
+			isManual: boolean;
+	  };
+
+// --- Configuration ---
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+
+// Helper to convert HTTP URL to WS URL
+function getWebSocketURL(url: string): string {
+	// Replace http/https with ws/wss
+	let wsUrl = url.replace(/^http/, "ws");
+	// Ensure it points to the /ws endpoint defined in Go
+	if (!wsUrl.endsWith("/ws")) {
+		wsUrl = `${wsUrl.replace(/\/$/, "")}/ws`;
+	}
+	return wsUrl;
+}
+
+// --- HTTP API Functions ---
 
 export async function fetchTeacherTimetable(): Promise<TimetableEntry[]> {
 	try {
@@ -71,31 +95,52 @@ export async function fetchSessionDetails(
 
 // --- WebSocket Helpers ---
 
-// Factory to create a connection
-export function createSocketConnection(): Socket {
-	return io(API_BASE_URL, {
-		autoConnect: false, // Better control over when it starts
-	});
+// Factory to create a native WebSocket connection
+export function createSocketConnection(): WebSocket {
+	const wsUrl = getWebSocketURL(API_BASE_URL);
+	const socket = new WebSocket(wsUrl);
+	return socket;
 }
 
 // Helper to join a specific session room
-export function joinSession(socket: Socket, sessionId: string) {
-	if (socket.connected) {
-		socket.emit("join_session", { attendanceSessionId: sessionId });
+// In Native WS, we send a JSON string with an "action" field
+export function joinSession(socket: WebSocket, sessionId: string) {
+	const payload = {
+		action: "join_session",
+		attendanceSessionId: sessionId,
+	};
+
+	// If the socket is already open, send immediately
+	if (socket.readyState === WebSocket.OPEN) {
+		socket.send(JSON.stringify(payload));
+	} else {
+		// If not, wait for it to open
+		socket.addEventListener(
+			"open",
+			() => {
+				socket.send(JSON.stringify(payload));
+			},
+			{ once: true },
+		);
 	}
 }
 
 // Helper to update attendance
 export function updateStudentStatus(
-	socket: Socket,
+	socket: WebSocket,
 	sessionId: string,
 	studentId: string,
 	status: "present" | "absent",
 ) {
-	socket.emit("update_attendance", {
+	const payload = {
+		action: "update_attendance",
 		attendanceSessionId: sessionId,
 		studentId: studentId,
 		status: status.toLowerCase(),
-		timestamp: null, // Indicates manual update
-	});
+		timestamp: null, // Indicates manual update, Go handles logic
+	};
+
+	if (socket.readyState === WebSocket.OPEN) {
+		socket.send(JSON.stringify(payload));
+	}
 }
