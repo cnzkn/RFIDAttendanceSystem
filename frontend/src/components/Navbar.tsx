@@ -121,7 +121,7 @@ export function Navbar() {
 						type="button"
 						onClick={() => {
 							logOut();
-							window.location.href = "/";
+							window.location.reload();
 						}}
 						className="group w-full text-left flex justify-between items-center px-4 py-3 font-bold uppercase 
                             text-sm bg-white hover:bg-red-500 hover:text-white transition-colors focus:outline-none"
