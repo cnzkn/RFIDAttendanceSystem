@@ -8,9 +8,15 @@ public enum UserRole
 
 public class UserModel : IdentityUser<Guid>, IAttendanceRegistrar
 {
+    /// <summary>
+    /// Full name of this user.
+    /// </summary>
     [Required]
     public string FullName { get; set; }
     
+    /// <summary>
+    /// Role of this user.
+    /// </summary>
     [Required]
     public UserRole Role { get; set; }
 

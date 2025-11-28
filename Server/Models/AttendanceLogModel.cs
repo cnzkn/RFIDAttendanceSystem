@@ -4,27 +4,51 @@ namespace CloudAPI.Models;
 
 public class AttendanceLogModel
 {
+    /// <summary>
+    /// Unique identifier of this model.
+    /// </summary>
     [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public Guid Id { get; set; }
     
+    /// <summary>
+    /// Date that this log entry was added.
+    /// </summary>
     [Required]
     public DateTime Date { get; set; }
     
+    /// <summary>
+    /// ID of the timetable this log affects.
+    /// </summary>
     [Required]
     public Guid TimetableId { get; set; }
     
+    /// <summary>
+    /// Week of the year.
+    /// </summary>
     [Required]
     public int WeekNumber { get; set; }
     
+    /// <summary>
+    /// ID of the attendee this log affects.
+    /// </summary>
     [Required]
     public Guid AttendeeId { get; set; }
     
+    /// <summary>
+    /// ID of the entity that affects this attendee's attendance status.
+    /// </summary>
     [Required]
     public Guid MarkedById { get; set; }
     
+    /// <summary>
+    /// Type of the entity that affects this attendee's attendance status.
+    /// </summary>
     [Required]
     public string MarkedByType { get; set; }
     
+    /// <summary>
+    /// Whether the attendee is present or not.
+    /// </summary>
     [Required]
     public bool IsPresent { get; set; }
     
