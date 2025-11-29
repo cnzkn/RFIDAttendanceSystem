@@ -18,13 +18,18 @@ Live deployed at https://umutsen2662.github.io/RFIDAttendanceSystemPages/
 ## Server
 
 ## Frontend
-This project requires **Node.js** and **npm**. If you don't already have them installed, download and install Node.js (which includes npm) from the official website: https://nodejs.org/
+This project requires **Node.js** and **npm**. 
+If you don't already have them installed, download and install Node.js (which includes npm) from the official website: https://nodejs.org/
 
 ### Running the Application
-
 After installing the dependencies, start the development server with:
-
 ```
 npm install
 npm run dev
+```
+
+### Building For Production
+To build this application for production:
+```bash
+npm run build
 ```
