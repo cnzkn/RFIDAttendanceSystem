@@ -18,7 +18,9 @@ public class DatabaseContext : IdentityDbContext<UserModel, IdentityRole<Guid>, 
 
         modelBuilder.Entity<TimetableModel>()
             .Property(x => x.Timeslot)
-            .HasColumnType("jsonb");
+            .HasColumnType("jsonb")
+            .HasConversion(x => JsonSerializer.Serialize(x),
+                y => JsonSerializer.Deserialize<TimeslotModel>(y)!);
     }
 
     public DbSet<AttendanceLogModel> AttendanceLogs { get; set; }
