@@ -24,6 +24,21 @@ builder.Services.AddDbContext<DatabaseContext>(options =>
     options.UseLazyLoadingProxies();
 });
 
+builder.Services.AddIdentity<UserModel, IdentityRole<Guid>>()
+    .AddEntityFrameworkStores<DatabaseContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(x =>
+{
+    x.LoginPath = "/User/Login";
+    x.LogoutPath = "/User/Logout";
+    x.AccessDeniedPath = "/User/AccessDenied";
+    x.SlidingExpiration = true;
+    x.Cookie.HttpOnly = true;
+    x.Cookie.SameSite = SameSiteMode.None;
+    x.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.None : CookieSecurePolicy.Always;
+});
+
 builder.Services.AddControllers();
 
 builder.Services.AddScoped<IEntityResolver<IAttendanceRegistrar, Guid>, AttendanceRegistrarEntityResolver>();
@@ -34,11 +49,15 @@ builder.Services.AddSingleton<IModuleHandler, ModuleHandler>();
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
-using (var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>())
+await using (var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>())
 {
     await db.Database.MigrateAsync();
 }
 
+app.UseRouting();
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
+
 app.Run();
