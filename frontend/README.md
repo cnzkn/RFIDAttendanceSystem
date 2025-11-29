@@ -1,8 +1,17 @@
 # Getting Started
 
-To run this application:
+## Prerequisites
 
-```bash
+This project requires **Node.js** and **npm**.
+
+If you don't already have them installed, download and install Node.js (which includes npm) from the official website:  
+https://nodejs.org/
+
+## Running the Application
+
+After installing the dependencies, start the development server with:
+
+```
 npm install
 npm run start
 ```
