@@ -13,7 +13,7 @@ After installing the dependencies, start the development server with:
 
 ```
 npm install
-npm run start
+npm run dev
 ```
 
 # Building For Production
