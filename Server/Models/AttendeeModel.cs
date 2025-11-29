@@ -11,19 +11,19 @@ public class AttendeeModel
     /// <summary>
     /// Student ID of this attendee.
     /// </summary>
-    [Required]
+    [Required, Range(0, 134217727)] // 27-bits
     public int StudentID { get; set; }
     
     /// <summary>
     /// Full name of this attendee.
     /// </summary>
-    [Required]
+    [Required, MaxLength(256)]
     public string FullName { get; set; }
     
     /// <summary>
     /// Unique identifier of this attendee's ID card.
     /// </summary>
-    [Required]
+    [Required, MaxLength(8)]
     public byte[] CardUID { get; set; }
     
     

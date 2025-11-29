@@ -11,7 +11,7 @@ public class UserModel : IdentityUser<Guid>, IAttendanceRegistrar
     /// <summary>
     /// Full name of this user.
     /// </summary>
-    [Required]
+    [Required, MaxLength(256)]
     public string FullName { get; set; }
     
     /// <summary>
@@ -23,9 +23,10 @@ public class UserModel : IdentityUser<Guid>, IAttendanceRegistrar
     
     public UserDto ToDto()
     {
-        return new UserDto()
+        return new UserDto
         {
             UserName = UserName,
+            FullName = FullName,
             Role = Role
         };
     }

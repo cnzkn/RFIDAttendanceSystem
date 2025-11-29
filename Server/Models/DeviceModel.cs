@@ -17,7 +17,7 @@ public class DeviceModel : IAttendanceRegistrar
     /// <summary>
     /// Certificate fingerprint of the device.
     /// </summary>
-    [Required]
+    [Required, MaxLength(128)]
     public byte[] Fingerprint { get; set; }
     
     

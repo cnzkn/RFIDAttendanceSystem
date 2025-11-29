@@ -23,13 +23,13 @@ public class SectionModel
     /// <summary>
     /// ID of this section.
     /// </summary>
-    [Required]
+    [Required, Range(1, 100)]
     public int SectionId { get; set; }
     
     /// <summary>
     /// Type of this section, such as a lecture, laboratory, recitation.
     /// </summary>
-    [Required]
+    [Required, MaxLength(32)]
     public string SectionType { get; set; }
     
     /// <summary>
@@ -54,7 +54,8 @@ public class SectionModel
         return new SectionDto()
         {
             Course =  Course.ToDto(),
-            SectionID = SectionId
+            Section = SectionType + SectionId,
+            User = User.ToDto()
         };
     }
 }

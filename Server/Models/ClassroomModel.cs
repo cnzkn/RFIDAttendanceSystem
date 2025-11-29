@@ -11,7 +11,7 @@ public class ClassroomModel
     /// <summary>
     /// Name of this classroom.
     /// </summary>
-    [Required]
+    [Required, MaxLength(32)]
     public string Name { get; set; }
 
 
