@@ -20,7 +20,7 @@ builder.Services.AddDbContext<DatabaseContext>(options =>
     var name = Environment.GetEnvironmentVariable("DB_NAME");
     var ssl = Environment.GetEnvironmentVariable("DB_SECURE") ?? "Require";
 
-    options.UseNpgsql($"Host={host};Port={port};Username={user};Password={pass};Database={name};SslMode={ssl};Trust Server Certificate=true");
+    options.UseNpgsql($"Host={host};Port={port};Username={user};Password={pass};Database={name};SslMode={ssl};Trust Server Certificate=true;Include Error Detail={(builder.Environment.IsDevelopment() ? "true" : "false")}");
     options.UseLazyLoadingProxies();
 });
 
@@ -41,10 +41,10 @@ builder.Services.ConfigureApplicationCookie(x =>
 
 builder.Services.AddControllers();
 
+builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<IEntityResolver<IAttendanceRegistrar, Guid>, AttendanceRegistrarEntityResolver>();
 builder.Services.AddScoped<ICertificateValidator, DeviceCertificateValidator>();
 builder.Services.AddSingleton<IModuleHandler, ModuleHandler>();
-
 
 var app = builder.Build();
 
@@ -52,6 +52,9 @@ using (var scope = app.Services.CreateScope())
 await using (var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>())
 {
     await db.Database.MigrateAsync();
+    
+    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+    await seeder.SeedAsync();
 }
 
 app.UseRouting();
