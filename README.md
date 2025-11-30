@@ -3,17 +3,25 @@ Source code for the RFID-based Attendance System project. The project aims to si
 This project is developed by the students of Middle East Technical University, Northern Cyprus Campus on 2025-2026 Fall Semester for CNG 495 Cloud Computing course.
 
 
+
 # Components
 
 ## Device
 Contains the source code for our hardware, responsible for scanning ID cards and transmit information to the server.
 
+
 ## Server
 Source code for our back-end service. Communicates with devices, provides an API for our front-end and coordinates project functionality. 
+
 
 ## Frontend
 Source code for the user interface of the project. Offers real-time attendance status along with administrator & instructor interfaces.
 Live deployed at https://umutsen2662.github.io/RFIDAttendanceSystemPages/
+
+
+## Documents
+Sources for the reports we've written and submitted. Each document has its own sub-folder in the folder.
+
 
 
 # Building
@@ -31,6 +39,7 @@ Following libraries are required to compile (Verify) the project:
 
 After installing libraries listed above, simply click "Verify" button to compile the project.
 To install the project on a real hardware, you will need an ESP32 board based on a ESP32-WROOM-32 SoC module. In the demonstration, an ESP32-DevKit-V1 was used.
+
 
 ## Server
 This project requires **ASP.NET Runtime** with **.NET 10**.  
@@ -61,6 +70,7 @@ The application requires following environment variables to be set in order to p
 - **SEED_CLASSROOMS**: A JSON string mapping from int to string, where int is the classroom ID, and string is the classroom name.
 - **SEED_TIMETABLES**: An array of JSON objects that have following properties: day, time and course.
 
+
 ## Frontend
 This project requires **Node.js** and **npm**. 
 If you don't already have them installed, download and install Node.js (which includes npm) from the official website: https://nodejs.org/
@@ -77,3 +87,7 @@ To build this application for production:
 ```bash
 npm run build
 ```
+
+
+## Documents
+Sources for the documents were imported to our repository from [Overleaf](https://www.overleaf.com), which is one of the simplest platforms to work with LaTeX. It can be used to compile the document sources to PDFs. Note that an account is needed to use the platform.
