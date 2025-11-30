@@ -1,5 +1,7 @@
 # RFID-based Attendance System
-Source code for the RFID-based Attendance System project. Project is made at Middle East Technical University, Northern Cyprus Campus on 2025-2026 Fall Semester for CNG 495 Cloud Computing course.
+Source code for the RFID-based Attendance System project. The project aims to simplify and automate the process of taking attendance using student ID cards with an NFC reader device, a cloud server to process data, and two distinct web-based user interfaces for instructors and system administrators.  
+This project is developed by the students of Middle East Technical University, Northern Cyprus Campus on 2025-2026 Fall Semester for CNG 495 Cloud Computing course.
+
 
 # Components
 
