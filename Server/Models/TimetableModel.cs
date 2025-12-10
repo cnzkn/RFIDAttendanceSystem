@@ -38,6 +38,7 @@ public class TimetableModel
     {
         return new TimetableDto()
         {
+            Id = Id,
             Classroom = Classroom.ToDto(),
             Section = CourseSection.ToDto(),
             Timeslot = Timeslot

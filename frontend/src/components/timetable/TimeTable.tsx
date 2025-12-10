@@ -78,7 +78,7 @@ export default function TimeTable({ classes }: { classes: TimetableEntry[] }) {
 						{allTimeSlots.map((slot) => (
 							<tr key={slot.num}>
 								{/* Time Label Column */}
-								<td className="h-24 border-b-2 border-r-4 border-black bg-gray-50 p-2 transition-colors">
+								<td className="h-full border-b-2 border-r-4 border-black bg-gray-50 p-2 transition-colors">
 									<TimeSlotLabel display={slot.display} />
 								</td>
 

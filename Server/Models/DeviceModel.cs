@@ -31,7 +31,7 @@ public class DeviceModel : IAttendanceRegistrar
         {
             Id = Id,
             Classroom =  AssignedClassroom.ToDto(),
-            Fingerprint = Convert.ToBase64String(Fingerprint)
+            Fingerprint = Convert.ToHexString(Fingerprint)
         };
     }
 }

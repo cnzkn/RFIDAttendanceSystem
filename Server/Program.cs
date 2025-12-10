@@ -35,8 +35,20 @@ builder.Services.ConfigureApplicationCookie(x =>
     x.AccessDeniedPath = "/User/AccessDenied";
     x.SlidingExpiration = true;
     x.Cookie.HttpOnly = true;
-    x.Cookie.SameSite = SameSiteMode.None;
+    x.Cookie.SameSite = builder.Environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None;
     x.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.None : CookieSecurePolicy.Always;
+});
+
+// Add CORS services and define a policy.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowMyFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
 });
 
 builder.Services.AddControllers();
@@ -45,6 +57,7 @@ builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<IEntityResolver<IAttendanceRegistrar, Guid>, AttendanceRegistrarEntityResolver>();
 builder.Services.AddScoped<ICertificateValidator, DeviceCertificateValidator>();
 builder.Services.AddSingleton<IModuleHandler, ModuleHandler>();
+builder.Services.AddSingleton<IClientHandler, ClientHandler>();
 
 var app = builder.Build();
 
@@ -52,14 +65,19 @@ using (var scope = app.Services.CreateScope())
 await using (var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>())
 {
     await db.Database.MigrateAsync();
-    
+
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
     await seeder.SeedAsync();
 }
 
 app.UseRouting();
+
+app.UseCors("AllowMyFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseWebSockets();
 
 app.MapControllers();
 

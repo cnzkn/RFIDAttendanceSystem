@@ -1,6 +1,10 @@
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+	queryOptions,
+	useQuery,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { HeaderCell, type SortKey } from "@/components/session/HeaderCell";
 import { SessionInfoGrid } from "@/components/session/SessionInfoGrid";
 import { StudentRow } from "@/components/session/StudentRow";
@@ -8,9 +12,11 @@ import { BlockyButton } from "@/components/ui/BlockyButton";
 import { BlockyCard } from "@/components/ui/BlockyCard";
 import {
 	createSocketConnection,
+	fetchClassrooms,
 	fetchSessionDetails,
 	joinSession,
 	type Student,
+	updateSessionRoom,
 	updateStudentStatus,
 	type WSMessage,
 } from "@/lib/api";
@@ -31,11 +37,22 @@ function RouteComponent() {
 	const { id } = Route.useParams();
 	const { data: sessionData } = useSuspenseQuery(sessionQueryOptions(id));
 
+	// --- Queries ---
+	const { data: classrooms = [] } = useQuery({
+		queryKey: ["classrooms"],
+		queryFn: fetchClassrooms,
+	});
+
+	const roomSuggestions = useMemo(
+		() => classrooms.map((c) => c.name),
+		[classrooms],
+	);
+
 	// --- Local State ---
 	const [students, setStudents] = useState<Student[]>([]);
+	const [isConnected, setIsConnected] = useState(false);
 	const [currentRoom, setCurrentRoom] = useState(sessionData.room || "");
 	const [newRoom, setNewRoom] = useState("");
-	const socketRef = useRef<WebSocket | null>(null);
 
 	// --- Sorting State ---
 	const [sortConfig, setSortConfig] = useState<{
@@ -92,17 +109,25 @@ function RouteComponent() {
 
 	useEffect(() => {
 		const socket = createSocketConnection();
-		socketRef.current = socket;
 
 		socket.onopen = () => {
+			console.log("WS: Connected");
+			setIsConnected(true);
 			joinSession(socket, id);
+		};
+
+		socket.onclose = () => {
+			console.log("WS: Disconnected");
+			setIsConnected(false);
 		};
 
 		socket.onmessage = (event) => {
 			try {
+				console.log("WS: Message received", event.data);
 				const data = JSON.parse(event.data) as WSMessage;
 
 				if (data.type === "initial_list") {
+					console.log("WS: Setting students", data.students);
 					setStudents(data.students);
 				} else if (data.type === "student_updated") {
 					// Update local state based on the specific student ID
@@ -124,26 +149,41 @@ function RouteComponent() {
 			}
 		};
 
-		// 4. Cleanup
+		// Cleanup
 		return () => {
 			socket.close();
-			socketRef.current = null;
 		};
 	}, [id]);
 
-	const handleStatusChange = (
+	const handleStatusChange = async (
 		studentId: string,
 		status: "present" | "absent",
 	) => {
-		if (socketRef.current)
-			updateStudentStatus(socketRef.current, id, studentId, status);
+		try {
+			await updateStudentStatus(id, studentId, status);
+			// We don't manually update state here; we wait for the WebSocket broadcast
+			// to ensure truth comes from the server.
+		} catch (err) {
+			console.error("Failed to update status:", err);
+			alert("Failed to update attendance status. Please try again.");
+		}
 	};
 
-	const handleRoomChange = () => {
+	const handleRoomChange = async () => {
 		if (newRoom.trim()) {
-			setCurrentRoom(newRoom);
-			setNewRoom("");
-			alert("Room updated locally");
+			try {
+				await updateSessionRoom(id, newRoom.trim());
+				setCurrentRoom(newRoom.trim());
+				setNewRoom("");
+				alert(
+					"Room updated successfully. Attendance can now be taken in the new room.",
+				);
+			} catch (err) {
+				console.error("Failed to update room:", err);
+				alert(
+					"Failed to update room. Please check if the room name is correct.",
+				);
+			}
 		}
 	};
 
@@ -156,6 +196,7 @@ function RouteComponent() {
 					newRoom={newRoom}
 					setNewRoom={setNewRoom}
 					onUpdateRoom={handleRoomChange}
+					roomSuggestions={roomSuggestions}
 				/>
 
 				<div className="mb-6 flex justify-between items-end">
@@ -163,6 +204,12 @@ function RouteComponent() {
 						Attendance List{" "}
 						<span className="text-gray-400">({students.length})</span>
 					</h2>
+					<div className="text-sm font-bold uppercase tracking-wider">
+						Status:{" "}
+						<span className={isConnected ? "text-green-600" : "text-red-500"}>
+							{isConnected ? "Connected" : "Disconnected"}
+						</span>
+					</div>
 				</div>
 
 				<BlockyCard className="p-0 bg-white">
@@ -206,20 +253,29 @@ function RouteComponent() {
 						</div>
 					) : (
 						<div className="p-12 text-center text-gray-500 font-bold uppercase tracking-widest">
-							Waiting for connection...
+							{isConnected
+								? "No students in this class."
+								: "Waiting for connection..."}
 						</div>
 					)}
 				</BlockyCard>
 
 				<div className="text-center mt-12 mb-12">
-					<BlockyButton
-						variant="primary"
-						size="lg"
-						className="bg-purple-600 hover:bg-purple-700"
-						onClick={() => alert("Navigating...")}
+					<Link
+						to="/history/$courseCode/$section"
+						params={{
+							courseCode: sessionData.courseCode.toString(),
+							section: sessionData.section,
+						}}
 					>
-						View Full History
-					</BlockyButton>
+						<BlockyButton
+							variant="primary"
+							size="lg"
+							className="bg-purple-600 hover:bg-purple-700"
+						>
+							View Full History
+						</BlockyButton>
+					</Link>
 				</div>
 			</div>
 		</div>

@@ -34,7 +34,7 @@ public class UserController : Controller
     {
         if (_signInManager.IsSignedIn(User))
         {
-            return StatusCode((int)HttpStatusCode.NotModified);
+            return Ok();
         }
         
         if (await _userManager.FindByNameAsync(login.UserName) is not { } user)

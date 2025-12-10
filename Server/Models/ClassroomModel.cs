@@ -19,6 +19,7 @@ public class ClassroomModel
     {
         return new ClassroomDto()
         {
+            Id = Id,
             Name = Name
         };
     }

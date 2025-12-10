@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using CloudAPI.Exceptions;
 
@@ -5,6 +6,14 @@ namespace CloudAPI.Database;
 
 public class DatabaseSeeder
 {
+    // Local DTO class to match the environment variable structure including CardUID
+    private class SeedAttendeeDto
+    {
+        public string StudentID { get; set; }
+        public string FullName { get; set; }
+        public string CardUID { get; set; }
+    }
+
     private readonly ILogger<DatabaseSeeder> _logger;
     private readonly DatabaseContext _context;
     private readonly UserManager<UserModel> _userManager;
@@ -43,10 +52,83 @@ public class DatabaseSeeder
             // Seed courses, sections and their timetables.
             await SeedTimetablesAsync();
             await _context.SaveChangesAsync();
+
+            // Seed extra attendees from Environment Variable
+            await SeedAttendeesFromEnvAsync();
+            await _context.SaveChangesAsync();
         }
         catch (Exception ex)
         {
             throw new AggregateException("An error occurred while seeding the database.", ex);
+        }
+    }
+
+    private async Task SeedAttendeesFromEnvAsync()
+    {
+        var attendeesJson = Environment.GetEnvironmentVariable("SEED_ATTENDEES");
+        if (string.IsNullOrWhiteSpace(attendeesJson)) return;
+
+        _logger.LogInformation("Seeding attendees from environment variable...");
+
+        try 
+        {
+            var dtos = JsonSerializer.Deserialize<List<SeedAttendeeDto>>(attendeesJson);
+            if (dtos == null) return;
+
+            var newAttendees = new List<AttendeeModel>();
+
+            foreach (var dto in dtos)
+            {
+                if (int.TryParse(dto.StudentID, out int studentId))
+                {
+                    if (!await _context.Attendee.AnyAsync(a => a.StudentID == studentId))
+                    {
+                        // Convert Hex/String CardUID to byte[]
+                        var cardBytes = Encoding.UTF8.GetBytes(dto.CardUID ?? "0000");
+                        if (cardBytes.Length > 4) cardBytes = cardBytes[..4]; // Truncate
+                        else if (cardBytes.Length < 4) 
+                        {
+                            var temp = new byte[4];
+                            cardBytes.CopyTo(temp, 0);
+                            cardBytes = temp; // Pad
+                        }
+
+                        var attendee = new AttendeeModel 
+                        { 
+                            FullName = dto.FullName, 
+                            StudentID = studentId,
+                            CardUID = cardBytes 
+                        };
+                        
+                        await _context.Attendee.AddAsync(attendee);
+                        newAttendees.Add(attendee);
+                        _logger.LogInformation($"Created attendee: {dto.FullName}");
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Enroll them in the first available section so they appear in the UI
+            if (newAttendees.Any())
+            {
+                var firstSection = await _context.Sections.Include(s => s.Attendees).FirstOrDefaultAsync();
+                if (firstSection != null)
+                {
+                    foreach (var attendee in newAttendees)
+                    {
+                        if (!firstSection.Attendees.Any(a => a.Id == attendee.Id))
+                        {
+                            firstSection.Attendees.Add(attendee);
+                        }
+                    }
+                    _logger.LogInformation($"Enrolled {newAttendees.Count} new attendees into section {firstSection.SectionType}{firstSection.SectionId}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Failed to seed attendees from env: " + ex.Message);
         }
     }
 
@@ -77,7 +159,8 @@ public class DatabaseSeeder
         ArgumentException.ThrowIfNullOrWhiteSpace(username, "SEED_ADMIN_USERNAME");
         ArgumentException.ThrowIfNullOrWhiteSpace(password, "SEED_ADMIN_PASSWORD");
         
-        if (await _userManager.FindByNameAsync(username) is not {} user)
+        var user = await _userManager.FindByNameAsync(username);
+        if (user is null)
         {
             user = new UserModel
             {
@@ -100,6 +183,16 @@ public class DatabaseSeeder
                 throw new IdentityErrorException($"Assigning roles to administrator account failed.", roleResult.Errors);
             }
         }
+        else
+        {
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, password);
+            
+            if (!result.Succeeded)
+            {
+                throw new IdentityErrorException($"Resetting password for administrator account failed.", result.Errors);
+            }
+        }
         
         await _context.SaveChangesAsync();
     }
@@ -114,7 +207,8 @@ public class DatabaseSeeder
         ArgumentException.ThrowIfNullOrWhiteSpace(username, "SEED_INSTRUCTOR_USERNAME");
         ArgumentException.ThrowIfNullOrWhiteSpace(password, "SEED_INSTRUCTOR_PASSWORD");
         
-        if (await _userManager.FindByNameAsync(username) is not {} user)
+        var user = await _userManager.FindByNameAsync(username);
+        if (user is null)
         {
             user = new UserModel
             {
@@ -135,6 +229,16 @@ public class DatabaseSeeder
             if (!roleResult.Succeeded)
             {
                 throw new IdentityErrorException($"Assigning roles to instructor account failed.", roleResult.Errors);
+            }
+        }
+        else
+        {
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, password);
+
+            if (!result.Succeeded)
+            {
+                throw new IdentityErrorException($"Resetting password for instructor account failed.", result.Errors);
             }
         }
         
