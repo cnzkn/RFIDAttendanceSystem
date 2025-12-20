@@ -20,7 +20,7 @@ export function ClassCard({ entry }: ClassCardProps) {
 				{entry.course}
 			</div>
 
-			<div className="flex justify-between items-end mt-2 z-10 text-lg">
+			<div className="flex justify-between items-end z-10 text-lg">
 				<span className="font-bold bg-white text-black px-1 border border-black group-hover:bg-black group-hover:text-white transition-colors">
 					{entry.section}
 				</span>

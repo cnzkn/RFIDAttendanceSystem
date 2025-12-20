@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { Navbar } from "@/components/Navbar";
+import { fetchCurrentUser } from "@/lib/api";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 
 interface MyRouterContext {
@@ -15,18 +16,19 @@ interface MyRouterContext {
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
-	// This runs BEFORE the component renders
-	beforeLoad: ({ location }) => {
-		// 1. Check strict exclusion first!
+	beforeLoad: async ({ location, context }) => {
 		if (location.pathname === "/login") {
-			return; // Don't interfere if they are going to login
+			return;
 		}
 
-		// 2. Check local storage
-		const token = localStorage.getItem("token");
-
-		// 3. If no token, throw a redirect
-		if (!token) {
+		try {
+			await context.queryClient.fetchQuery({
+				queryKey: ["currentUser"],
+				queryFn: fetchCurrentUser,
+				retry: false,
+				staleTime: 1000 * 60 * 5, // 5 minutes
+			});
+		} catch (_error) {
 			throw redirect({
 				to: "/login",
 			});

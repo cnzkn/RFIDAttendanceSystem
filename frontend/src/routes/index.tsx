@@ -1,17 +1,27 @@
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import TimeTable from "@/components/timetable/TimeTable"; // Updated path based on previous file generation
-import { fetchTeacherTimetable } from "@/lib/api";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import TimeTable from "@/components/timetable/TimeTable";
+import { fetchCurrentUser, fetchTeacherTimetable } from "@/lib/api";
 
 const timetableQuery = queryOptions({
 	queryKey: ["teacher-timetable"],
 	queryFn: fetchTeacherTimetable,
 });
 
+const userQuery = queryOptions({
+	queryKey: ["currentUser"],
+	queryFn: fetchCurrentUser,
+});
+
 export const Route = createFileRoute("/")({
 	component: IndexComponent,
-	loader: ({ context: { queryClient } }) =>
-		queryClient.ensureQueryData(timetableQuery),
+	loader: async ({ context: { queryClient } }) => {
+		const user = await queryClient.ensureQueryData(userQuery);
+		if (user.role === 1) {
+			throw redirect({ to: "/admin/devices" });
+		}
+		return queryClient.ensureQueryData(timetableQuery);
+	},
 });
 
 function IndexComponent() {

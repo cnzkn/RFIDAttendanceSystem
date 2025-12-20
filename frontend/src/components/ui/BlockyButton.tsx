@@ -11,11 +11,6 @@ export function BlockyButton({
 	className = "",
 	...props
 }: BlockyButtonProps) {
-	// LOGIC UPDATE:
-	// 1. Hover: Move Up-Left (-2px) -> "Lift"
-	// 2. Active: Move Down-Right (2px) -> "Press into page"
-	//    This creates a 4px total travel distance when releasing, which feels much
-	//    snappier and matches the shadow growth animation better.
 	const baseStyles = `
     font-black uppercase tracking-wide border-2 border-black 
     transition-all duration-200 ease-out

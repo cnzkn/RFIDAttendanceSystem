@@ -119,10 +119,6 @@ function LoginComponent() {
 							</div>
 						)}
 
-						<p className="text-center text-red-500 font-bold uppercase text-md">
-							Test Login: Enter anything to proceed.
-						</p>
-
 						{/* Submit Button */}
 						<div className="mt-4">
 							<BlockyButton

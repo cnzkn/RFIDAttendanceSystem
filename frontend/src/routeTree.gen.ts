@@ -13,6 +13,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as CoursesRouteImport } from './routes/courses'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionIdRouteImport } from './routes/session/$id'
+import { Route as AdminDevicesRouteImport } from './routes/admin/devices'
+import { Route as HistoryCourseCodeSectionRouteImport } from './routes/history/$courseCode/$section'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -34,39 +36,77 @@ const SessionIdRoute = SessionIdRouteImport.update({
   path: '/session/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDevicesRoute = AdminDevicesRouteImport.update({
+  id: '/admin/devices',
+  path: '/admin/devices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryCourseCodeSectionRoute =
+  HistoryCourseCodeSectionRouteImport.update({
+    id: '/history/$courseCode/$section',
+    path: '/history/$courseCode/$section',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/courses': typeof CoursesRoute
   '/login': typeof LoginRoute
+  '/admin/devices': typeof AdminDevicesRoute
   '/session/$id': typeof SessionIdRoute
+  '/history/$courseCode/$section': typeof HistoryCourseCodeSectionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/courses': typeof CoursesRoute
   '/login': typeof LoginRoute
+  '/admin/devices': typeof AdminDevicesRoute
   '/session/$id': typeof SessionIdRoute
+  '/history/$courseCode/$section': typeof HistoryCourseCodeSectionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/courses': typeof CoursesRoute
   '/login': typeof LoginRoute
+  '/admin/devices': typeof AdminDevicesRoute
   '/session/$id': typeof SessionIdRoute
+  '/history/$courseCode/$section': typeof HistoryCourseCodeSectionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/courses' | '/login' | '/session/$id'
+  fullPaths:
+    | '/'
+    | '/courses'
+    | '/login'
+    | '/admin/devices'
+    | '/session/$id'
+    | '/history/$courseCode/$section'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/courses' | '/login' | '/session/$id'
-  id: '__root__' | '/' | '/courses' | '/login' | '/session/$id'
+  to:
+    | '/'
+    | '/courses'
+    | '/login'
+    | '/admin/devices'
+    | '/session/$id'
+    | '/history/$courseCode/$section'
+  id:
+    | '__root__'
+    | '/'
+    | '/courses'
+    | '/login'
+    | '/admin/devices'
+    | '/session/$id'
+    | '/history/$courseCode/$section'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CoursesRoute: typeof CoursesRoute
   LoginRoute: typeof LoginRoute
+  AdminDevicesRoute: typeof AdminDevicesRoute
   SessionIdRoute: typeof SessionIdRoute
+  HistoryCourseCodeSectionRoute: typeof HistoryCourseCodeSectionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +139,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SessionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/devices': {
+      id: '/admin/devices'
+      path: '/admin/devices'
+      fullPath: '/admin/devices'
+      preLoaderRoute: typeof AdminDevicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history/$courseCode/$section': {
+      id: '/history/$courseCode/$section'
+      path: '/history/$courseCode/$section'
+      fullPath: '/history/$courseCode/$section'
+      preLoaderRoute: typeof HistoryCourseCodeSectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -106,7 +160,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CoursesRoute: CoursesRoute,
   LoginRoute: LoginRoute,
+  AdminDevicesRoute: AdminDevicesRoute,
   SessionIdRoute: SessionIdRoute,
+  HistoryCourseCodeSectionRoute: HistoryCourseCodeSectionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

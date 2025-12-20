@@ -1,8 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useId, useState } from "react";
 import { BlockyButton } from "@/components/ui/BlockyButton";
 import { BlockyCard } from "@/components/ui/BlockyCard";
-import { logOut } from "@/lib/api";
+import { fetchCurrentUser, logOut } from "@/lib/api";
 
 export function Navbar() {
 	const userButtonId = useId();
@@ -10,6 +11,11 @@ export function Navbar() {
 
 	// We need state to trigger a re-render for the rotation animation
 	const [isOpen, setIsOpen] = useState(false);
+
+	const { data: user } = useQuery({
+		queryKey: ["currentUser"],
+		queryFn: fetchCurrentUser,
+	});
 
 	useEffect(() => {
 		const popoverElement = document.getElementById(userMenuId);
@@ -38,7 +44,7 @@ export function Navbar() {
 		<nav className="sticky top-0 z-50 flex justify-between items-center bg-white border-b-4 border-black px-6 py-4">
 			{/* LEFT SIDE: Brand & Navigation */}
 			<ul className="flex flex-row items-center gap-2">
-				{/* Brand Logo */}
+				{/* Logo/Link */}
 				<li className="flex h-full">
 					<Link
 						to="/"
@@ -53,31 +59,49 @@ export function Navbar() {
 				</li>
 
 				{/* Reusable Divider Component */}
-				<NavDivider />
+				<li className="h-8 w-[3px] bg-black skew-x-[-15deg] opacity-20 mx-4" />
 
 				{/* Navigation Links */}
-				<li className="flex h-full">
-					<Link
-						to="/"
-						className="font-bold uppercase tracking-wide px-3 py-1 border-2 border-transparent hover:border-black hover:bg-yellow-300 transition-all"
-						activeProps={{
-							className: "bg-yellow-300 border-black", // Active state style
-						}}
-					>
-						Weekly Schedule
-					</Link>
-				</li>
-				<li className="flex h-full">
-					<Link
-						to="/courses"
-						className="font-bold uppercase tracking-wide px-3 py-1 border-2 border-transparent hover:border-black hover:bg-yellow-300 transition-all"
-						activeProps={{
-							className: "bg-yellow-300 border-black", // Active state style
-						}}
-					>
-						All Courses
-					</Link>
-				</li>
+				{user?.role === 1 ? (
+					/* ADMIN LINKS */
+					<li className="flex h-full">
+						<Link
+							to="/admin/devices"
+							className="font-bold uppercase tracking-wide px-3 py-1 border-2 border-transparent hover:border-black hover:bg-yellow-300 transition-all"
+							activeProps={{
+								className: "bg-yellow-300 border-black",
+							}}
+						>
+							Manage Devices
+						</Link>
+					</li>
+				) : (
+					/* INSTRUCTOR/USER LINKS */
+					<>
+						<li className="flex h-full">
+							<Link
+								to="/"
+								className="font-bold uppercase tracking-wide px-3 py-1 border-2 border-transparent hover:border-black hover:bg-yellow-300 transition-all"
+								activeProps={{
+									className: "bg-yellow-300 border-black",
+								}}
+							>
+								Weekly Schedule
+							</Link>
+						</li>
+						<li className="flex h-full">
+							<Link
+								to="/courses"
+								className="font-bold uppercase tracking-wide px-3 py-1 border-2 border-transparent hover:border-black hover:bg-yellow-300 transition-all"
+								activeProps={{
+									className: "bg-yellow-300 border-black",
+								}}
+							>
+								All Courses
+							</Link>
+						</li>
+					</>
+				)}
 			</ul>
 
 			{/* RIGHT SIDE: User Action */}
@@ -88,7 +112,7 @@ export function Navbar() {
 				size="md"
 				className="flex items-center gap-2 group"
 			>
-				<span>User</span>
+				<span>{user?.fullName || "User"}</span>
 				<span
 					className={`text-[10px] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
 				>
@@ -119,8 +143,8 @@ export function Navbar() {
 					{/* Menu Actions - Using standard button for "List Item" feel */}
 					<button
 						type="button"
-						onClick={() => {
-							logOut();
+						onClick={async () => {
+							await logOut();
 							window.location.reload();
 						}}
 						className="group w-full text-left flex justify-between items-center px-4 py-3 font-bold uppercase 
@@ -134,12 +158,5 @@ export function Navbar() {
 				</BlockyCard>
 			</div>
 		</nav>
-	);
-}
-
-// Small helper component for that slanted line
-function NavDivider() {
-	return (
-		<li className="h-8 w-[3px] bg-black skew-x-[-15deg] opacity-20 mx-4" />
 	);
 }

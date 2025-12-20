@@ -23,4 +23,39 @@ export default defineConfig({
             '@': fileURLToPath(new URL('./src', import.meta.url)),
         },
     },
+    server: {
+        proxy: {
+            '/User': {
+                target: 'http://localhost:5075',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/Session': {
+                target: 'http://localhost:5075',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/Attendance': {
+                target: 'http://localhost:5075',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/Device': {
+                target: 'http://localhost:5075',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/Classroom': {
+                target: 'http://localhost:5075',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/ws': {
+                target: 'http://localhost:5075',
+                ws: true,
+                changeOrigin: true,
+                secure: false,
+            }
+        }
+    },
 })
