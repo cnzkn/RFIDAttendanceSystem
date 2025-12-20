@@ -42,7 +42,11 @@ if (builder.Environment.IsDevelopment())
     });
 }
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 builder.Services.AddScoped<IEntityResolver<IAttendanceRegistrar, Guid>, AttendanceRegistrarEntityResolver>();
 builder.Services.AddScoped<ICertificateValidator, DeviceCertificateValidator>();

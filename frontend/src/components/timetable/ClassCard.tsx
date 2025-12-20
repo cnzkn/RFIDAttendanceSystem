@@ -10,6 +10,7 @@ export function ClassCard({ entry }: ClassCardProps) {
 		<Link
 			to={"/session/$id"}
 			params={{ id: entry.id }}
+			preload={false}
 			className=" group relative block w-full h-full border-2 border-black bg-blue-400 transition-all duration-200 ease-out
                         overflow-hidden shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] 
                         hover:translate-x-[-1px] hover:translate-y-[-1px] hover:bg-blue-500 flex flex-col justify-between p-2"

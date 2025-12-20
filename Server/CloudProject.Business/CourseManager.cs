@@ -24,7 +24,7 @@ public class CourseManager
     public async Task<CourseDto?> GetByCodeAsync(int code, CancellationToken token)
     {
         var course = await _courseRepository.FirstOrDefaultAsync(x => x.Code == code, token);
-        return course?.ToDto();
+        return course?.ToDto(true);
     }
 
     public async Task<SectionDto[]> GetAllSectionsAsync(int code, CancellationToken token)

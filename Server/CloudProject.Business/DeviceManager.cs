@@ -12,6 +12,18 @@ public class DeviceManager
         _deviceRepository = deviceRepository;
         _classroomManager = classroomManager;
     }
+
+    public async Task<List<DeviceDto>> GetAllDevicesAsync(CancellationToken token = default)
+    {
+        var devices = await _deviceRepository.GetAllAsync(token);
+        return devices.Select(x => x.ToDto()).ToList();
+    }
+
+    public async Task<DeviceDto?> GetDeviceByIdAsync(Guid id, CancellationToken token = default)
+    {
+        var device = await _deviceRepository.GetByIdAsync(id, token);
+        return device?.ToDto();
+    }
     
     internal async Task<DeviceModel?> FindByFingerprintAsync(byte[] fingerprint, CancellationToken token = default)
     {

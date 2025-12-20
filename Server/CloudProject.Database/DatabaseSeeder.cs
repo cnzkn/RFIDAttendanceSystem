@@ -229,17 +229,35 @@ public class DatabaseSeeder
             {
                 var courseName = match.Groups[1].Value;
                 
+                // Generate a unique code based on name
+                int GenerateCode(string name) {
+                    var matchNum = Regex.Match(name, @"\d+");
+                    int num = matchNum.Success ? int.Parse(matchNum.Value) : 0;
+                    string dept = name.Split(' ')[0];
+                    int deptCode = Math.Abs(dept.GetHashCode()) % 1000;
+                    return deptCode * 10000 + num;
+                }
+
+                int newCode = GenerateCode(courseName);
+
                 if (await _context.Courses.FirstOrDefaultAsync(c => c.Name.ToLower() == courseName.ToLower()) is not { } course)
                 {
                     _logger.LogDebug("Course {courseName} not found, creating a new course...", courseName);
                     
                     course = new CourseModel()
                     {
-                        Code = 3550000,
+                        Code = newCode,
                         Name = courseName
                     };
                     
                     await _context.Courses.AddAsync(course);
+                    await _context.SaveChangesAsync();
+                }
+                else if (course.Code == 3550000)
+                {
+                    // Fix for existing seeded data
+                    course.Code = newCode;
+                    _context.Courses.Update(course);
                     await _context.SaveChangesAsync();
                 }
                 
@@ -308,6 +326,9 @@ public class DatabaseSeeder
         ArgumentException.ThrowIfNullOrWhiteSpace(timetablesSeed, "SEED_ATTENDEES");
         
         JsonElement slots = JsonSerializer.Deserialize<dynamic>(timetablesSeed);
+        
+        // Fetch all sections to enroll students in
+        var sections = await _context.Sections.Include(x => x.Attendees).ToListAsync();
 
         foreach (var slot in slots.EnumerateArray())
         {
@@ -315,16 +336,44 @@ public class DatabaseSeeder
             var fullName = slot.GetProperty("fullName").GetString()!;
             var cardUid = slot.GetProperty("cardUid").GetString()!;
             
-            if (!_context.Attendee.Any(x => x.StudentID == studentId))
+            AttendeeModel attendee;
+            
+            if (await _context.Attendee.FirstOrDefaultAsync(x => x.StudentID == studentId) is { } existing)
             {
-                var attendee = new AttendeeModel
+                attendee = existing;
+            }
+            else
+            {
+                attendee = new AttendeeModel
                 {
                     StudentID = studentId,
                     FullName = fullName,
                     CardUID = Convert.FromHexString(cardUid)
                 };
             
-                await _context.Attendee.AddAsync(attendee);   
+                await _context.Attendee.AddAsync(attendee);
+                await _context.SaveChangesAsync(); // Save to get the Id
+            }
+
+            // Enroll in all sections for testing purposes
+            bool anyChange = false;
+            foreach (var section in sections)
+            {
+                if (!section.AttendeeIds.Contains(attendee.Id))
+                {
+                    section.AttendeeIds.Add(attendee.Id);
+                    // Force EF Core to detect change by re-assigning the list
+                    section.AttendeeIds = new List<Guid>(section.AttendeeIds);
+                    
+                    section.Attendees.Add(attendee);
+                    anyChange = true;
+                }
+            }
+
+            if (anyChange)
+            {
+                _context.Sections.UpdateRange(sections);
+                await _context.SaveChangesAsync();
             }
         }
     }

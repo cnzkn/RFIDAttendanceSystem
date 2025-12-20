@@ -1,5 +1,5 @@
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { BlockyButton } from "@/components/ui/BlockyButton";
 import { BlockyCard } from "@/components/ui/BlockyCard";
 import { type BackendSection, fetchUserSections } from "@/lib/api";
@@ -104,6 +104,7 @@ function CourseCard({ section }: { section: BackendSection }) {
 							courseCode: section.course.code.toString(),
 							section: section.section,
 						}}
+						preload={false}
 						className="w-full"
 					>
 						<BlockyButton variant="neutral" size="sm" className="w-full py-2">

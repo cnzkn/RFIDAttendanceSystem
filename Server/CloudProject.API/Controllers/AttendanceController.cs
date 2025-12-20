@@ -17,7 +17,7 @@ public class AttendanceController : ControllerEx
         _timetableManager = timetableManager;
     }
 
-    [Authorize, HttpPatch]
+    [Authorize, HttpPatch, HttpPost("update")]
     public async Task<IActionResult> UpdateAttendanceRecord([FromBody]AttendanceUpdateRequestDto request, CancellationToken token)
     {
         try
