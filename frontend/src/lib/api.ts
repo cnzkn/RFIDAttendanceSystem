@@ -1,3 +1,5 @@
+import { toUITimetable, toUISession, toUIHistory } from "./adapters";
+
 export interface Student {
 	studentId: string;
 	name: string;
@@ -43,6 +45,7 @@ export interface CourseHistory {
 	students: HistoryStudent[];
 	weeks: number;
 	daysPerWeek: number;
+    timetableIds: Record<number, string>;
 }
 
 // --- Backend Types ---
@@ -54,7 +57,7 @@ export interface BackendCourse {
 export interface BackendUser {
 	fullName: string;
 	userName: string;
-	role: number;
+	role: number | string;
 }
 
 export interface BackendSection {
@@ -166,16 +169,7 @@ export async function fetchTeacherTimetable(): Promise<TimetableEntry[]> {
 		console.log("API: fetchTeacherTimetable success", data);
 
 		// Map backend data to frontend TimetableEntry
-		return data.map((item) => ({
-			id: item.id,
-			course: item.section.course.name,
-			courseCode: item.section.course.code.toString(),
-			section: item.section.section,
-			room: item.classroom.name,
-			dayOfWeek: item.timeslot.dayOfWeek,
-			startHour: item.timeslot.timeslotNumber,
-			endHour: item.timeslot.timeslotNumber,
-		}));
+		return data.map(toUITimetable);
 	} catch (error) {
 		console.error("Failed to fetch timetable:", error);
 		return [];
@@ -236,7 +230,7 @@ export async function fetchSessionDetails(
 	const data = await response.json();
 	console.log("API: fetchSessionDetails success", data);
 
-	return data;
+	return toUISession(data);
 }
 
 export async function fetchCourseHistory(
@@ -260,7 +254,7 @@ export async function fetchCourseHistory(
 	const data = await response.json();
 	console.log("API: fetchCourseHistory success", data);
 
-	return data;
+	return toUIHistory(data);
 }
 
 // --- WebSocket Helpers ---
@@ -405,10 +399,16 @@ export async function updateDevice(
 	data: CreateDeviceRequest,
 ): Promise<BackendDevice> {
 	console.log("API: updateDevice called", id, data);
+    // Transform frontend "CreateDeviceRequest" to backend "UpdateDeviceRequestDto"
+    const payload = {
+        newFingerprint: data.fingerprint ? data.fingerprint : null, // Handle potential empty string if logic requires
+        newClassroomId: data.classroomId
+    };
+
 	const response = await fetch(`${API_BASE_URL}/Device/${id}`, {
 		method: "PUT",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(data),
+		body: JSON.stringify(payload),
 		credentials: "include",
 	});
 	if (!response.ok) {
@@ -428,10 +428,10 @@ export async function deleteDevice(id: string) {
 }
 
 export interface HistoryUpdateItem {
-	studentId: string;
-	week: number;
-	day: number;
-	status: "present" | "absent" | "pending";
+	attendeeId: string;
+    timetableId: string;
+    weekNumber?: number;
+	status: "present" | "absent" | null;
 }
 
 export async function saveHistoryChanges(

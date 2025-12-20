@@ -69,12 +69,24 @@ function HistoryComponent() {
 				const weekDayPart = parts[1]; // "Week-Day"
 				const [weekStr, dayStr] = weekDayPart.split("-");
 
-				updates.push({
-					studentId,
-					week: parseInt(weekStr, 10),
-					day: parseInt(dayStr, 10),
-					status: status,
-				});
+				const week = parseInt(weekStr, 10);
+				const day = parseInt(dayStr, 10);
+				const timetableId = data.timetableIds[day];
+
+				if (timetableId) {
+					// Map "pending" to null to indicate deletion
+					let apiStatus: "present" | "absent" | null = null;
+					if (status === "present") apiStatus = "present";
+					else if (status === "absent") apiStatus = "absent";
+                    // else pending -> null
+
+					updates.push({
+						attendeeId: studentId,
+						timetableId,
+						weekNumber: week,
+						status: apiStatus,
+					});
+				}
 			}
 
 			await saveHistoryChanges(courseCode, section, updates);

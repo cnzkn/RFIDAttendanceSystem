@@ -87,9 +87,15 @@ public class TimetableManager
             .ToArray();
     }
     
-    internal async Task<List<TimetableModel>> GetTimetableBySectionAsync(Guid sectionId, CancellationToken token = default)
+    public async Task<List<TimetableModel>> GetTimetableBySectionAsync(Guid sectionId, CancellationToken token = default)
     {
         var result = await _timetableRepository.WhereAsync(x => x.SectionId == sectionId, token);
+        return result.ToList();
+    }
+
+    internal async Task<List<TimetableModel>> GetTimetablesByCourseIdAsync(Guid courseId, CancellationToken token = default)
+    {
+        var result = await _timetableRepository.WhereAsync(x => x.CourseSection.CourseId == courseId, token);
         return result.ToList();
     }
         

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { BlockyButton } from "@/components/ui/BlockyButton";
 import { BlockyCard } from "@/components/ui/BlockyCard";
 import { BlockyModal } from "@/components/ui/BlockyModal";
@@ -33,6 +33,12 @@ function AdminDevicesComponent() {
 		queryKey: ["devices"],
 		queryFn: fetchDevices,
 	});
+
+	const sortedDevices = useMemo(() => {
+		return [...devices].sort((a, b) =>
+			a.fingerprint.localeCompare(b.fingerprint),
+		);
+	}, [devices]);
 
 	const { data: classrooms = [] } = useQuery({
 		queryKey: ["classrooms"],
@@ -78,7 +84,7 @@ function AdminDevicesComponent() {
 		setEditingId(device.id);
 		setFormData({
 			fingerprint: device.fingerprint,
-			classroomId: device.classroom.id,
+			classroomId: device.classroom?.id || "",
 		});
 		setIsModalOpen(true);
 	};
@@ -137,14 +143,14 @@ function AdminDevicesComponent() {
 								<thead>
 									<tr className="bg-black text-white uppercase text font-mono">
 										<th className="p-4 border-r border-gray-700">
-											Fingerprint (Hex)
+											Fingerprint (Base64)
 										</th>
 										<th className="p-4 border-r border-gray-700">Classroom</th>
 										<th className="p-4 text-right">Actions</th>
 									</tr>
 								</thead>
 								<tbody>
-									{devices.map((device) => (
+									{sortedDevices.map((device) => (
 										<tr
 											key={device.id}
 											className="border-b-2 border-black transition-colors group"
@@ -189,14 +195,14 @@ function AdminDevicesComponent() {
 								htmlFor={modalFingerprintId}
 								className="text-sm font-bold uppercase"
 							>
-								Fingerprint (Hex)
+								Fingerprint (Base64)
 							</label>
 							<input
 								id={modalFingerprintId}
 								type="text"
 								required
-								className="border-2 border-black p-2 font-mono uppercase focus:bg-blue-50 focus:outline-none"
-								placeholder="e.g. A1B2C3D4"
+								className="border-2 border-black p-2 font-mono focus:bg-blue-50 focus:outline-none"
+								placeholder="e.g. dGVzdA=="
 								value={formData.fingerprint}
 								onChange={(e) =>
 									setFormData({

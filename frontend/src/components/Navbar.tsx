@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useId, useState } from "react";
 import { BlockyButton } from "@/components/ui/BlockyButton";
 import { BlockyCard } from "@/components/ui/BlockyCard";
@@ -8,6 +8,8 @@ import { fetchCurrentUser, logOut } from "@/lib/api";
 export function Navbar() {
 	const userButtonId = useId();
 	const userMenuId = useId();
+	const location = useLocation();
+	const navigate = useNavigate();
 
 	// We need state to trigger a re-render for the rotation animation
 	const [isOpen, setIsOpen] = useState(false);
@@ -16,6 +18,28 @@ export function Navbar() {
 		queryKey: ["currentUser"],
 		queryFn: fetchCurrentUser,
 	});
+
+	// --- Role-based Redirection ---
+	useEffect(() => {
+		if (!user) return;
+
+		const isAdmin = user.role === 1 || user.role === "Administrator";
+		const path = location.pathname;
+
+		if (isAdmin) {
+			// Admins should only be on /admin/... paths
+			if (!path.startsWith("/admin")) {
+				console.log("Navbar: Redirecting Admin to /admin/devices");
+				navigate({ to: "/admin/devices", replace: true });
+			}
+		} else {
+			// Instructors/Users should NOT be on /admin/... paths
+			if (path.startsWith("/admin")) {
+				console.log("Navbar: Redirecting User to /");
+				navigate({ to: "/", replace: true });
+			}
+		}
+	}, [user, location.pathname, navigate]);
 
 	useEffect(() => {
 		const popoverElement = document.getElementById(userMenuId);
@@ -62,7 +86,7 @@ export function Navbar() {
 				<li className="h-8 w-[3px] bg-black skew-x-[-15deg] opacity-20 mx-4" />
 
 				{/* Navigation Links */}
-				{user?.role === 1 ? (
+				{user?.role === 1 || user?.role === "Administrator" ? (
 					/* ADMIN LINKS */
 					<li className="flex h-full">
 						<Link

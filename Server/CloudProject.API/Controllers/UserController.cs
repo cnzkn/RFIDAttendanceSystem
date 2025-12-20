@@ -71,7 +71,7 @@ public class UserController : ControllerEx
         var user = await _userManager.FindByIdAsync(userId!);
 
         var result = await _context.Sections.Where(x => x.UserId == user!.Id).ToListAsync();
-        return Ok(result.Select(x => x.ToDto()));
+        return Ok(result.Select(x => x.ToDto(true)));
     }
     
     [Authorize, HttpGet("timetable")]
@@ -84,6 +84,6 @@ public class UserController : ControllerEx
         var sectionIds = sections.Select(x => x.Id).ToList();
         
         var timetable = await _context.Timetables.Where(x => sectionIds.Contains(x.SectionId)).ToListAsync();
-        return Ok(timetable.Select(x => x.ToDto()));
+        return Ok(timetable.Select(x => x.ToDto(true)));
     }
 }

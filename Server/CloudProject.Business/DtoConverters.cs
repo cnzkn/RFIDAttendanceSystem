@@ -47,7 +47,7 @@ public static class DtoConverters
             return new DeviceDto()
             {
                 Id = includeIds ? model.Id : null,
-                Classroom =  model.AssignedClassroom?.ToDto(),
+                Classroom =  model.AssignedClassroom?.ToDto(true),
                 Fingerprint = Convert.ToBase64String(model.Fingerprint)
             };
         }

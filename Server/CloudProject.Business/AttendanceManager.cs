@@ -101,29 +101,58 @@ public class AttendanceManager
             throw new ObjectNotFoundException("Attendee not found.");
         }
         
-        var weekNumber = await _timetableManager.GetCurrentWeekAsync(token);
+        var weekNumber = request.WeekNumber ?? await _timetableManager.GetCurrentWeekAsync(token);
         if (weekNumber == 0)
         {
-            throw new InvalidOperationException("Not in a semester.");
+            throw new InvalidOperationException("Not in a semester, or invalid week number.");
         }
 
         if (user.Role == UserRole.Administrator || (user.Role == UserRole.Instructor && timetable.CourseSection.UserId == userId))
         {
-            var attendanceLog = new AttendanceLogModel
+            // Check for existing log to update instead of duplicate insert
+            var existingLog = await _attendanceRepository.FirstOrDefaultAsync(x => 
+                x.TimetableId == request.TimetableId && 
+                x.AttendeeId == request.AttendeeId &&
+                x.WeekNumber == weekNumber, token);
+
+            if (request.Status == null)
             {
-                Id = Guid.NewGuid(),
-                AttendeeId = request.AttendeeId,
-                TimetableId = request.TimetableId,
-                Date = DateTime.UtcNow,
-                WeekNumber = weekNumber,
-                IsPresent = true,
-                MarkedById = userId,
-                MarkedByType = nameof(UserModel)
-            };
-            
-            // Don't cancel at this point.
-            // ReSharper disable once MethodSupportsCancellation
-            await _attendanceRepository.AddAsync(attendanceLog);
+                // Pending state: Remove record if it exists
+                if (existingLog != null)
+                {
+                    await _attendanceRepository.RemoveAsync(existingLog, token);
+                }
+            }
+            else
+            {
+                bool isPresent = request.Status == AttendanceRegisterType.Present;
+
+                if (existingLog != null)
+                {
+                    existingLog.IsPresent = isPresent;
+                    existingLog.MarkedById = userId;
+                    existingLog.MarkedByType = nameof(UserModel);
+                    await _attendanceRepository.UpdateAsync(existingLog, token);
+                }
+                else
+                {
+                    var attendanceLog = new AttendanceLogModel
+                    {
+                        Id = Guid.NewGuid(),
+                        AttendeeId = request.AttendeeId,
+                        TimetableId = request.TimetableId,
+                        // Note: Date might be inaccurate if updating past history without a specific date. 
+                        // Using UtcNow is "log time", but for history consistency, we rely on WeekNumber.
+                        Date = DateTime.UtcNow, 
+                        WeekNumber = weekNumber,
+                        IsPresent = isPresent,
+                        MarkedById = userId,
+                        MarkedByType = nameof(UserModel)
+                    };
+                    
+                    await _attendanceRepository.AddAsync(attendanceLog, token);
+                }
+            }
         }
         else
         {
@@ -136,13 +165,11 @@ public class AttendanceManager
         var oldAutoCommit = _attendanceRepository.AutoCommit;
         _attendanceRepository.AutoCommit = false;
 
-        var tasks = new List<Task>();
         foreach (var request in requests)
         {
-            tasks.Add(UpdateAttendanceAsync(userId, request, token));
+            await UpdateAttendanceAsync(userId, request, token);
         }
         
-        await Task.WhenAll(tasks);
         await _attendanceRepository.CommitAsync(token);
         
         _attendanceRepository.AutoCommit = oldAutoCommit;
@@ -150,70 +177,70 @@ public class AttendanceManager
     
     public async Task<List<AttendanceHistoryDto>> GetAttendanceHistoryAsync(Guid courseId, CancellationToken token = default)
     {
-        var logs = (await _attendanceRepository.GetAllAsync(token))
-            .ToList();
-        
-        if (logs.Count == 0)
-        {
-            return [];
-        }
-
+        var timetables = await _timetableManager.GetTimetablesByCourseIdAsync(courseId, token);
         var result = new List<AttendanceHistoryDto>();
-
-        var logsByTimetable = logs.Where(x => x.Timetable.CourseSection.CourseId == courseId).GroupBy(x => x.TimetableId);
         
-        foreach (var timetableGroup in logsByTimetable)
-        {
-            var timetable = await _timetableManager.InternalGetTimetableByIdAsync(timetableGroup.Key, token);
-            if (timetable is null)
-            {
-                continue;
-            }
+        var logs = (await _attendanceRepository.WhereAsync(x => x.Timetable.CourseSection.CourseId == courseId, token)).ToList();
 
-            var sessions = new List<AttendanceHistorySessionDto>();
-            var attendeeIds = timetable.CourseSection.AttendeeIds;
-            var attendees = timetable.CourseSection.Attendees;
-            var dict = new Dictionary<Guid, AttendeeDto>();
+        // Group by Section
+        var timetablesBySection = timetables.GroupBy(t => t.SectionId);
+
+        foreach (var sectionGroup in timetablesBySection)
+        {
+            // Use the first timetable to get section info (they all belong to same section)
+            var sectionInfo = sectionGroup.First().CourseSection;
+            
+            var attendees = sectionInfo.Attendees ?? new List<AttendeeModel>();
+            var studentDtos = attendees.Select(a => a.ToDto(true)).ToList();
+            
             var weekNumbers = await _timetableManager.GetTotalWeeksInCurrentSemesterAsync(token);
             
-            for (int i = 1; i <= weekNumbers; ++i)
+            var timetableDtos = new List<AttendanceTimetableDto>();
+
+            foreach (var timetable in sectionGroup)
             {
-                var weekLogs = timetableGroup.Where(x => x.WeekNumber == i)
-                    .OrderByDescending(x => x.Date)
-                    .ToList();
+                var sessions = new List<AttendanceHistorySessionDto>();
+                var timetableLogs = logs.Where(x => x.TimetableId == timetable.Id).ToList();
 
-                List<AttendeeDto> presentList = new(), absentList = new();
-
-                foreach (var attendeeId in attendeeIds)
+                for (int i = 1; i <= weekNumbers; ++i)
                 {
-                    var present = false;
-                    if (weekLogs.FirstOrDefault(x => x.AttendeeId == attendeeId) is { } item)
-                    {
-                        present = item.IsPresent;
-                    }
+                    var weekLogs = timetableLogs.Where(x => x.WeekNumber == i)
+                        .OrderByDescending(x => x.Date)
+                        .ToList();
 
-                    if (!dict.TryGetValue(attendeeId, out var dto)) // simple caching
+                    List<Guid> presentList = new(), absentList = new();
+
+                                    foreach (var attendee in attendees)
+                                    {
+                                        if (weekLogs.FirstOrDefault(x => x.AttendeeId == attendee.Id) is { } item)
+                                        {
+                                            (item.IsPresent ? presentList : absentList).Add(attendee.Id);
+                                        }
+                                        // If no log exists, do NOT add to either list. 
+                                        // This allows the frontend to interpret "missing from both" as "Pending".
+                                    }
+                    var attendanceDict = new Dictionary<AttendanceRegisterType, List<Guid>>
                     {
-                        dto = attendees.FirstOrDefault(x => x.Id == attendeeId)!.ToDto();
-                        dict[attendeeId] = dto;
-                    }
-                    
-                    (present ? presentList : absentList).Add(dto);
+                        { AttendanceRegisterType.Present, presentList },
+                        { AttendanceRegisterType.Absent, absentList }
+                    };
+
+                    sessions.Add(new AttendanceHistorySessionDto(i, attendanceDict));
                 }
-
-                var attendanceDict = new Dictionary<AttendanceRegisterType, List<AttendeeDto>>
+                
+                timetableDtos.Add(new AttendanceTimetableDto
                 {
-                    { AttendanceRegisterType.Present, presentList },
-                    { AttendanceRegisterType.Absent, absentList }
-                };
-
-                sessions.Add(new AttendanceHistorySessionDto(i, timetable.Timeslot, attendanceDict));
+                    Id = timetable.Id,
+                    Timeslot = timetable.Timeslot,
+                    Sessions = sessions
+                });
             }
-            
+
             result.Add(new AttendanceHistoryDto
             {
-                Section = timetable.CourseSection.ToDto(),
-                Sessions = sessions
+                Section = sectionInfo.ToDto(),
+                Students = studentDtos,
+                Timetables = timetableDtos
             });
         }
 

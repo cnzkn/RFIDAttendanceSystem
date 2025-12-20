@@ -16,10 +16,6 @@ const userQuery = queryOptions({
 export const Route = createFileRoute("/")({
 	component: IndexComponent,
 	loader: async ({ context: { queryClient } }) => {
-		const user = await queryClient.ensureQueryData(userQuery);
-		if (user.role === 1) {
-			throw redirect({ to: "/admin/devices" });
-		}
 		return queryClient.ensureQueryData(timetableQuery);
 	},
 });

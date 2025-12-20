@@ -15,14 +15,14 @@ public class ClassroomManager
     {
         var classrooms = await _classroomRepository.GetAllAsync(token);
 
-        return classrooms.Select(x => x.ToDto())
+        return classrooms.Select(x => x.ToDto(true))
             .ToArray();
     }
     
     public async Task<ClassroomDto?> GetByNameAsync(string name, CancellationToken token)
     {
         var classroom = await _classroomRepository.FirstOrDefaultAsync(x => x.Name == name, token);
-        return classroom?.ToDto();
+        return classroom?.ToDto(true);
     }
     
     public async Task<Guid?> GetIdByNameAsync(string name, CancellationToken token)
