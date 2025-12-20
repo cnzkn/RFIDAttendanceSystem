@@ -1,12 +1,11 @@
 using System.Net;
-using CloudProject.Business;
 using CloudProject.Business.Dto;
 
-namespace CloudAPI.Controllers;
+namespace CloudProject.API.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class UserController : Controller
+public class UserController : ControllerEx
 {
     private readonly ILogger<UserController> _logger;
     private readonly SignInManager<UserModel> _signInManager;
@@ -26,8 +25,7 @@ public class UserController : Controller
     [Authorize, HttpGet]
     public async Task<IActionResult> Me()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var user = await _userManager.FindByIdAsync(userId!);
+        var user = await GetCurrentUserAsync();
         return Ok(user!.ToDto());
     }
 

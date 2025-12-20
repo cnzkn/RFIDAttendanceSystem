@@ -1,8 +1,8 @@
-namespace CloudAPI.Controllers;
+namespace CloudProject.API.Controllers;
 
 [ApiController]
 [Route("/")]
-public class MainController : Controller
+public class MainController : ControllerEx
 {
     private readonly ILogger<MainController> _logger;
     

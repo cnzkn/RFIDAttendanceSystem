@@ -1,6 +1,4 @@
-using CloudProject.Business;
-
-namespace CloudAPI.Services;
+namespace CloudProject.API.Services;
 
 public class ClientHandler : IClientHandler
 {

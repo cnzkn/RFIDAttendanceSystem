@@ -1,10 +1,8 @@
-using CloudProject.Business;
-
-namespace CloudAPI.Controllers;
+namespace CloudProject.API.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class ClassroomController : Controller
+public class ClassroomController : ControllerEx
 {
     private readonly ILogger<ClassroomController> _logger;
     private readonly ClassroomManager _classroomManager;

@@ -1,8 +1,8 @@
-﻿namespace CloudAPI.Controllers;
+﻿namespace CloudProject.API.Controllers;
 
 [ApiController]
 [Route("ws")]
-public class WebSocketController : ControllerBase
+public class WebSocketController : ControllerEx
 {
     private readonly ICertificateValidator _validator;
     private readonly IModuleHandler _moduleHandler;

@@ -7,14 +7,16 @@ public class AttendanceManager
     private readonly AttendeeManager _attendeeManager;
     private readonly DeviceManager _deviceManager;
     private readonly TimetableManager _timetableManager;
+    private readonly UserManager _userManager;
 
-    public AttendanceManager(ILogger<AttendanceManager> logger, IRepository<AttendanceLogModel> attendanceRepository, AttendeeManager attendeeManager, DeviceManager deviceManager, TimetableManager timetableManager)
+    public AttendanceManager(ILogger<AttendanceManager> logger, IRepository<AttendanceLogModel> attendanceRepository, AttendeeManager attendeeManager, DeviceManager deviceManager, TimetableManager timetableManager, UserManager userManager)
     {
         _logger = logger;
         _attendanceRepository = attendanceRepository;
         _attendeeManager = attendeeManager;
         _deviceManager = deviceManager;
         _timetableManager = timetableManager;
+        _userManager = userManager;
     }
 
     public async Task<AttendanceStatus> RecordAttendanceAsync(byte[] deviceFingerprint, byte[] cardId, CancellationToken token = default)
@@ -22,7 +24,7 @@ public class AttendanceManager
         var device = await _deviceManager.FindByFingerprintAsync(deviceFingerprint, token);
         if (device is null)
         {
-            throw new InvalidOperationException("Device not found.");
+            throw new ObjectNotFoundException("Device not found.");
         }
         
         var attendee = await _attendeeManager.InternalGetByCardAsync(Convert.FromHexString(cardId), token);
@@ -82,16 +84,21 @@ public class AttendanceManager
     
     public async Task UpdateAttendanceAsync(Guid userId, AttendanceUpdateRequestDto request, CancellationToken token = default)
     {
+        if (await _userManager.GetByIdAsync(userId, token) is not { } user)
+        {
+            throw new ObjectNotFoundException("User not found.");
+        }
+        
         var timetable = await _timetableManager.InternalGetTimetableByIdAsync(request.TimetableId, token);
         if (timetable is null)
         {
-            throw new InvalidOperationException("Timetable not found.");
+            throw new ObjectNotFoundException("Timetable not found.");
         }
         
         var attendee = await _attendeeManager.InternalGetByIdAsync(request.AttendeeId, token);
         if (attendee is null)
         {
-            throw new InvalidOperationException("Attendee not found.");
+            throw new ObjectNotFoundException("Attendee not found.");
         }
         
         var weekNumber = await _timetableManager.GetCurrentWeekAsync(token);
@@ -99,22 +106,29 @@ public class AttendanceManager
         {
             throw new InvalidOperationException("Not in a semester.");
         }
-        
-        var attendanceLog = new AttendanceLogModel
+
+        if (user.Role == UserRole.Administrator || (user.Role == UserRole.Instructor && timetable.CourseSection.UserId == userId))
         {
-            Id = Guid.NewGuid(),
-            AttendeeId = request.AttendeeId,
-            TimetableId = request.TimetableId,
-            Date = DateTime.UtcNow,
-            WeekNumber = weekNumber,
-            IsPresent = true,
-            MarkedById = userId,
-            MarkedByType = nameof(UserModel)
-        };
-        
-        // Don't cancel at this point.
-        // ReSharper disable once MethodSupportsCancellation
-        await _attendanceRepository.AddAsync(attendanceLog);
+            var attendanceLog = new AttendanceLogModel
+            {
+                Id = Guid.NewGuid(),
+                AttendeeId = request.AttendeeId,
+                TimetableId = request.TimetableId,
+                Date = DateTime.UtcNow,
+                WeekNumber = weekNumber,
+                IsPresent = true,
+                MarkedById = userId,
+                MarkedByType = nameof(UserModel)
+            };
+            
+            // Don't cancel at this point.
+            // ReSharper disable once MethodSupportsCancellation
+            await _attendanceRepository.AddAsync(attendanceLog);
+        }
+        else
+        {
+            throw new UnauthorizedAccessException("User not authorized to update attendance for this timetable.");
+        }
     }
     
     public async Task UpdateAttendanceAsync(Guid userId, List<AttendanceUpdateRequestDto> requests, CancellationToken token = default)

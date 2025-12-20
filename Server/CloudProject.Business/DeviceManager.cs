@@ -27,7 +27,7 @@ public class DeviceManager
 
         if (await _classroomManager.InternalGetClassroomByIdAsync(classroomId, token) is not { } classroom)
         {
-            throw new InvalidOperationException("Classroom could not be found.");
+            throw new ObjectNotFoundException("Classroom could not be found.");
         }
         
         device = new DeviceModel
@@ -46,7 +46,7 @@ public class DeviceManager
     {
         if (await _deviceRepository.FirstOrDefaultAsync(x => fingerprint.SequenceEqual(x.Fingerprint), token) is not { } existingDevice)
         {
-            throw new InvalidOperationException("Device not found.");
+            throw new ObjectNotFoundException("Device not found.");
         }
 
         if (request.NewFingerprint is not null)
@@ -59,7 +59,7 @@ public class DeviceManager
             var val = request.NewClassroomId.Value;
             if (await _classroomManager.InternalGetClassroomByIdAsync(val, token) is not { } classroom)
             {
-                throw new InvalidOperationException("Classroom could not be found.");
+                throw new ObjectNotFoundException("Classroom could not be found.");
             }
             
             existingDevice.AssignedClassroomId = classroom.Id;
@@ -75,7 +75,7 @@ public class DeviceManager
     {
         if (await _deviceRepository.FirstOrDefaultAsync(x => fingerprint.SequenceEqual(x.Fingerprint), token) is not { } existingDevice)
         {
-            throw new InvalidOperationException("Device not found.");
+            throw new ObjectNotFoundException("Device not found.");
         }
 
         await _deviceRepository.RemoveAsync(existingDevice, token);

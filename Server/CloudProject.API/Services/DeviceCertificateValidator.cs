@@ -1,4 +1,4 @@
-﻿namespace CloudAPI.Services;
+﻿namespace CloudProject.API.Services;
 
 public class DeviceCertificateValidator : ICertificateValidator
 {

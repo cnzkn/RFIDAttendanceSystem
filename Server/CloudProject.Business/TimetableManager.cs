@@ -106,17 +106,17 @@ public class TimetableManager
         var timetable = await InternalGetTimetableByIdAsync(timetableId, token);
         if (timetable == null)
         {
-            throw new InvalidOperationException("Timetable not found.");
+            throw new ObjectNotFoundException("Timetable not found.");
         }
 
         if (await _classroomManager.InternalGetClassroomByIdAsync(newClassroomId, token) is not { } classroom)
         {
-            throw new InvalidOperationException("Classroom could not be found.");
+            throw new ObjectNotFoundException("Classroom could not be found.");
         }
 
         if (await _userManager.InternalGetByIdAsync(userId, token) is not { } user)
         {
-            throw new InvalidOperationException("User not found.");
+            throw new ObjectNotFoundException("User not found.");
         }
 
         if (user.Role == UserRole.Administrator || (user.Role == UserRole.Instructor && timetable.CourseSection.UserId == userId))
@@ -135,7 +135,7 @@ public class TimetableManager
         var timetable = await InternalGetTimetableByIdAsync(timetableId, token);
         if (timetable == null)
         {
-            throw new InvalidOperationException("Timetable not found.");
+            throw new ObjectNotFoundException("Timetable not found.");
         }
 
         return timetable.ToDto();

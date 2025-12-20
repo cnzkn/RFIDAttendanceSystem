@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-
 namespace CloudProject.Business;
 
 public static class BusinessExtensions

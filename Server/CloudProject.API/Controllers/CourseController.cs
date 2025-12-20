@@ -1,10 +1,8 @@
-using CloudProject.Business;
-
-namespace CloudAPI.Controllers;
+namespace CloudProject.API.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class CourseController : Controller
+public class CourseController : ControllerEx
 {
     private readonly ILogger<CourseController> _logger;
     private readonly CourseManager _courseManager;
@@ -29,13 +27,16 @@ public class CourseController : Controller
         try
         {
             await _courseManager.DeleteCourseAsync(id, token);
+            return NoContent();
         }
-        catch (InvalidOperationException)
+        catch (ObjectNotFoundException oex)
         {
-            return NotFound();
+            return NotFound(oex.Message);
         }
-        
-        return NoContent();
+        catch (InvalidOperationException iex)
+        {
+            return BadRequest(iex.Message);
+        }
     }
     
     [Authorize, HttpGet("{id}")]

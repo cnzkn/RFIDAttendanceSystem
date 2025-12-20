@@ -42,7 +42,7 @@ public class CourseManager
     {
         if (await _courseRepository.GetByIdAsync(id, token) is not { } course)
         {
-            throw new InvalidOperationException("Course not found.");
+            throw new ObjectNotFoundException("Course not found.");
         }
 
         var sections = await _sectionRepository.WhereAsync(x => x.CourseId == course.Id, token);
