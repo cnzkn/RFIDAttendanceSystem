@@ -5,7 +5,7 @@
 This project requires **Node.js** and **npm**.
 
 If you don't already have them installed, download and install Node.js (which includes npm) from the official website:  
-https://nodejs.org
+https://nodejs.org/
 
 ## Running the Application
 
