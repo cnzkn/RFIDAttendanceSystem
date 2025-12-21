@@ -2,5 +2,6 @@
 
 public interface ICertificateValidator
 {
-    bool IsValid(X509Certificate2 cert);
+    Task<bool> IsValidAsync(X509Certificate2 cert);
+    Task<bool> IsValidAsync(string thumbprint);
 }

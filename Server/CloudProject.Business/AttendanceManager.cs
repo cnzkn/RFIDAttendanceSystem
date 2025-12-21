@@ -19,7 +19,7 @@ public class AttendanceManager
         _userManager = userManager;
     }
 
-    public async Task<AttendanceStatus> RecordAttendanceAsync(byte[] deviceFingerprint, byte[] cardId, CancellationToken token = default)
+    public async Task<(AttendanceStatus Status, string? Name)> RecordAttendanceAsync(byte[] deviceFingerprint, byte[] cardId, CancellationToken token = default)
     {
         var device = await _deviceManager.FindByFingerprintAsync(deviceFingerprint, token);
         if (device is null)
@@ -27,10 +27,10 @@ public class AttendanceManager
             throw new ObjectNotFoundException("Device not found.");
         }
         
-        var attendee = await _attendeeManager.InternalGetByCardAsync(Convert.FromHexString(cardId), token);
+        var attendee = await _attendeeManager.InternalGetByCardAsync(cardId, token);
         if (attendee is null)
         {
-            return AttendanceStatus.UnrecognizedId;
+            return (AttendanceStatus.UnrecognizedId, null);
         }
 
         var weekNumber = await _timetableManager.GetCurrentWeekAsync(token);
@@ -38,18 +38,18 @@ public class AttendanceManager
         if (currentTimeslot is null)
         {
             // No timeslot means there can't be any lecture right now.
-            return AttendanceStatus.NoLecture;
+            return (AttendanceStatus.NoLecture, null);
         }
         
         var timetable = await _timetableManager.InternalGetClassroomTimetableAsync(device.AssignedClassroomId, token);
         if (timetable.FirstOrDefault(x => x.Timeslot != currentTimeslot) is not { } slot)
         {
-            return AttendanceStatus.NoLecture;
+            return (AttendanceStatus.NoLecture, null);
         }
 
         if (!slot.CourseSection.AttendeeIds.Contains(attendee.Id))
         {
-            return AttendanceStatus.NotRegistered;
+            return (AttendanceStatus.NotRegistered, null);
         }
         
         var existingLog = await _attendanceRepository.FirstOrDefaultAsync(x =>
@@ -60,7 +60,7 @@ public class AttendanceManager
         if (existingLog is { IsPresent: true })
         {
             // Maybe return AlreadyScanned if MarkedByType == UserModel too? Don't let devices override student scans?
-            return AttendanceStatus.AlreadyScanned;
+            return (AttendanceStatus.AlreadyScanned, null);
         }
         
         var attendanceLog = new AttendanceLogModel
@@ -79,7 +79,7 @@ public class AttendanceManager
         // ReSharper disable once MethodSupportsCancellation
         await _attendanceRepository.AddAsync(attendanceLog);
         
-        return AttendanceStatus.Success;
+        return (AttendanceStatus.AlreadyScanned, attendee.FullName);
     }
     
     public async Task UpdateAttendanceAsync(Guid userId, AttendanceUpdateRequestDto request, CancellationToken token = default)

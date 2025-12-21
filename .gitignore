@@ -432,3 +432,6 @@ FodyWeavers.xsd
 /frontend/.nitro
 /frontend/.tanstack
 /frontend/.wrangler
+
+# Server Publish folder
+/Server/Publish

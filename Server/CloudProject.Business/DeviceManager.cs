@@ -29,6 +29,11 @@ public class DeviceManager
     {
         return await _deviceRepository.FirstOrDefaultAsync(x => fingerprint.SequenceEqual(x.Fingerprint), token);
     }
+        
+    public async Task<DeviceDto?> GetByFingerprintAsync(byte[] fingerprint, CancellationToken token = default)
+    {
+        return (await _deviceRepository.FirstOrDefaultAsync(x => fingerprint.SequenceEqual(x.Fingerprint), token))?.ToDto();
+    }
     
     public async Task<DeviceDto> CreateDeviceAsync(Guid classroomId, byte[] fingerprint, CancellationToken token = default)
     {

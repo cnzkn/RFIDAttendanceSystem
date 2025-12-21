@@ -86,6 +86,17 @@ public class TimetableManager
         return result.Select(x => x.ToDto())
             .ToArray();
     }
+        
+    public async Task<TimetableDto?> GetClassroomCurrentTimetableAsync(Guid classroomId, CancellationToken token = default)
+    {
+        if (await GetCurrentTimeslotAsync(token) is not { } timeslot)
+        {
+            throw new InvalidOperationException("Not currently in a valid timeslot.");
+        }
+        
+        var result = await InternalGetClassroomTimetableAsync(classroomId, token);
+        return result.FirstOrDefault(x => x.Timeslot == timeslot)?.ToDto();
+    }
     
     public async Task<List<TimetableModel>> GetTimetableBySectionAsync(Guid sectionId, CancellationToken token = default)
     {

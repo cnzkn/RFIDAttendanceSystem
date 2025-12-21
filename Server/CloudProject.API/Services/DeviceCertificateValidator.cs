@@ -2,19 +2,20 @@
 
 public class DeviceCertificateValidator : ICertificateValidator
 {
-    private readonly HashSet<string> _allowedThumbprints;
+    private readonly DeviceManager _deviceManager;
 
-    public DeviceCertificateValidator(IConfiguration config)
+    public DeviceCertificateValidator(DeviceManager deviceManager)
     {
-        _allowedThumbprints = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "B222DBD0AE450CF38961C300DFA467997AAF2520",
-            "8289EFCB4F325B37817D9F65239ECC0A1EFAA122"
-        };
+        _deviceManager = deviceManager;
     }
 
-    public bool IsValid(X509Certificate2? cert)
+    public async Task<bool> IsValidAsync(X509Certificate2? cert)
     {
-        return cert != null && _allowedThumbprints.Contains(cert.Thumbprint);
+        return cert != null && (await _deviceManager.GetByFingerprintAsync(Convert.FromHexString(cert.Thumbprint))) != null;
+    }
+
+    public async Task<bool> IsValidAsync(string? thumbprint)
+    {
+        return !string.IsNullOrEmpty(thumbprint) && (await _deviceManager.GetByFingerprintAsync(Convert.FromHexString(thumbprint))) != null;
     }
 }

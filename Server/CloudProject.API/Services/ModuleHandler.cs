@@ -8,11 +8,17 @@ public class ModuleHandler : IModuleHandler
 {
     private readonly ILogger<ModuleHandler> _logger;
     private readonly ConcurrentDictionary<string, WebSocketConnection> _connections;
+    private readonly DeviceManager _deviceManager;
+    private readonly AttendanceManager _attendanceManager;
+    private readonly TimetableManager _timetableManager;
 
-    public ModuleHandler(ILogger<ModuleHandler> logger)
+    public ModuleHandler(ILogger<ModuleHandler> logger, DeviceManager deviceManager, AttendanceManager attendanceManager, TimetableManager timetableManager)
     {
         _logger = logger;
         _connections = new();
+        _deviceManager = deviceManager;
+        _attendanceManager = attendanceManager;
+        _timetableManager = timetableManager;
     }
 
     private List<string> alreadyScanned = new();
@@ -36,31 +42,50 @@ public class ModuleHandler : IModuleHandler
 
                 if (result.MessageType == WebSocketMessageType.Binary)
                 {
-                    using (var __ms = new MemoryStream(buffer))
+                    using (var __ms = new MemoryStream(buffer, 0, result.Count))
                     using (var br = new BinaryReader(__ms))
                     {
                         var pkt = br.ReadInt32();
 
                         switch (pkt)
                         {
-                            case 0x49514552:
+                            case 0x49514552: // PKT_REQUESTINFO
                             {
                                 using (var ms = new MemoryStream())
                                 using (var bw = new BinaryWriter(ms))
                                 {
-                                    bw.Write(0x464E494D);
-                                    if (fingerprint[0] == 'B')
+                                    bw.Write(0x464E494D); // RSP_MODULEINFO
+                                    if (await _deviceManager.GetByFingerprintAsync(Convert.FromHexString(fingerprint)) is not { } device)
                                     {
-                                        bw.Write("S-113"u8);
+                                        bw.Write("---"u8);
                                         bw.Write((byte)0);
+                                        bw.Write("---"u8);
                                         bw.Write((byte)0);
                                     }
                                     else
                                     {
-                                        bw.Write("S-114"u8);
+                                        bw.Write(Encoding.UTF8.GetBytes(device.Classroom.Name));
                                         bw.Write((byte)0);
-                                        bw.Write("CNG491");
-                                        bw.Write((byte)0);
+
+                                        try
+                                        {
+                                            if (await _timetableManager.GetClassroomCurrentTimetableAsync(device.Classroom.Id!.Value, CancellationToken.None) is { } timetable)
+                                            {
+                                                bw.Write(Encoding.UTF8.GetBytes(timetable.Section.Course.Name));
+                                                bw.Write((byte)0);   
+                                            }
+                                            else
+                                            {
+                                                bw.Write("---"u8);
+                                                bw.Write((byte)0);
+                                            }
+                                        }
+                                        catch (InvalidOperationException)
+                                        {
+                                            bw.Write("---"u8);
+                                            bw.Write((byte)0);
+                                        }
+                                        
                                     }
 
                                     await webSocket.SendAsync(ms.ToArray(), WebSocketMessageType.Binary, true, CancellationToken.None);
@@ -69,52 +94,26 @@ public class ModuleHandler : IModuleHandler
                                 break;
                             }
 
-                            case 0x41514552:
+                            case 0x41514552: // PKT_SUBMITSCAN
                             {
-                                Dictionary<string, string> uids = new()
-                                {
-                                    { "B39FB8AD", "Can Özkan" },
-                                    { "B27ECC3F", "John Doe" }
-                                };
+                                var length = br.ReadByte();
+                                var uidBytes = br.ReadBytes(length);
 
-                                string hex = BitConverter.ToString(buffer)
-                                    .Replace("-", "")
-                                    .ToUpperInvariant();
-
-                                AttendanceStatus status = AttendanceStatus.Error;
-                                string name = string.Empty;
-
-                                if (fingerprint[0] == '8')
-                                {
-                                    if (uids.TryGetValue(hex, out name))
-                                    {
-                                        if (!alreadyScanned.Contains(hex))
-                                        {
-                                            status = AttendanceStatus.Success;
-                                            alreadyScanned.Add(hex);
-                                        }
-                                        else
-                                        {
-                                            status = AttendanceStatus.AlreadyScanned;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        status = AttendanceStatus.UnrecognizedId;
-                                    }
-                                }
-                                else
-                                {
-                                    status = AttendanceStatus.NoLecture;
-                                }
+                                var (status, name) = await _attendanceManager.RecordAttendanceAsync(Convert.FromHexString(fingerprint), uidBytes, CancellationToken.None);
 
                                 using (var ms = new MemoryStream())
                                 using (var bw = new BinaryWriter(ms))
                                 {
-                                    bw.Write(0x53455253);
+                                    bw.Write(0x53455253); // RSP_SCANRESULT
                                     bw.Write((byte)status);
-                                    bw.Write(Encoding.UTF8.GetBytes(name));
-                                    bw.Write((byte)0);
+
+                                    if (name is not null)
+                                    {
+                                        bw.Write(Encoding.UTF8.GetBytes(name));
+                                        bw.Write((byte)0);
+                                    }
+                                    
+                                    await webSocket.SendAsync(ms.ToArray(), WebSocketMessageType.Binary, true, CancellationToken.None);
                                 }
 
                                 break;
