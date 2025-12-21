@@ -116,7 +116,7 @@ public class ClientHandler : IClientHandler
                 name = attendee.FullName,
                 status = log != null ? (log.IsPresent ? "present" : "absent") : "nothing",
                 timestamp = log?.Date.ToString("o"), // ISO 8601
-                isManual = log?.MarkedByType == "User" // Simplified check
+                isManual = log?.MarkedByType == nameof(UserModel) // Simplified check
             });
         }
 
@@ -159,6 +159,44 @@ public class ClientHandler : IClientHandler
         foreach (var client in _clientSessions)
         {
             if (client.Value == sessionId)
+            {
+                if (_sockets.TryGetValue(client.Key, out var socket) && socket.State == WebSocketState.Open)
+                {
+                    tasks.Add(socket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None));
+                }
+            }
+        }
+
+        if (tasks.Any())
+        {
+            await Task.WhenAll(tasks);
+        }
+    }
+
+    public async Task BroadcastUpdateAsync(AttendanceLogDto log)
+    {
+        dynamic message = new
+        {
+            type = "student_updated",
+            studentId = log.Attendee.Id.ToString(),
+            status = log.IsPresent ? "present" : "absent",
+            timestamp = log.Date.ToString("o"), // ISO 8601
+            isManual = log.Registrar is UserModel
+        };
+        
+        var json = JsonSerializer.Serialize(message, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        var segment = new ArraySegment<byte>(bytes);
+
+        var tasks = new List<Task>();
+
+        foreach (var client in _clientSessions)
+        {
+            if (client.Value == log.Timetable.Id)
             {
                 if (_sockets.TryGetValue(client.Key, out var socket) && socket.State == WebSocketState.Open)
                 {

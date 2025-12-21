@@ -93,4 +93,20 @@ public static class DtoConverters
             };
         }
     }
+    
+    extension(AttendanceLogModel model)
+    {
+        public AttendanceLogDto ToDto(bool includeIds = false)
+        {
+            return new AttendanceLogDto()
+            {
+                Id = includeIds ? model.Id : null,
+                Date = model.Date,
+                WeekNumber = model.WeekNumber,
+                Attendee = model.Attendee.ToDto(includeIds),
+                Registrar = model.Registrar!,
+                IsPresent = model.IsPresent
+            };
+        }
+    }
 }

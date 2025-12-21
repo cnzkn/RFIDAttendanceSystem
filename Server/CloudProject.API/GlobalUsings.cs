@@ -11,6 +11,7 @@ global using System.Text.Json.Serialization;
 global using CloudProject.API.Services;
 global using CloudProject.API.Utility;
 global using CloudProject.Business;
+global using CloudProject.Business.Dto;
 global using CloudProject.Business.Exceptions;
 global using CloudProject.Core;
 global using CloudProject.Database;

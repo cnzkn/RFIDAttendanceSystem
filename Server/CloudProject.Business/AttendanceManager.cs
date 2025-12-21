@@ -8,8 +8,9 @@ public class AttendanceManager
     private readonly DeviceManager _deviceManager;
     private readonly TimetableManager _timetableManager;
     private readonly UserManager _userManager;
+    private readonly IClientHandler _clientHandler;
 
-    public AttendanceManager(ILogger<AttendanceManager> logger, IRepository<AttendanceLogModel> attendanceRepository, AttendeeManager attendeeManager, DeviceManager deviceManager, TimetableManager timetableManager, UserManager userManager)
+    public AttendanceManager(ILogger<AttendanceManager> logger, IRepository<AttendanceLogModel> attendanceRepository, AttendeeManager attendeeManager, DeviceManager deviceManager, TimetableManager timetableManager, UserManager userManager, IClientHandler clientHandler)
     {
         _logger = logger;
         _attendanceRepository = attendanceRepository;
@@ -17,6 +18,7 @@ public class AttendanceManager
         _deviceManager = deviceManager;
         _timetableManager = timetableManager;
         _userManager = userManager;
+        _clientHandler = clientHandler;
     }
 
     public async Task<(AttendanceStatus Status, string? Name)> RecordAttendanceAsync(byte[] deviceFingerprint, byte[] cardId, CancellationToken token = default)
@@ -78,8 +80,17 @@ public class AttendanceManager
         // Don't cancel at this point.
         // ReSharper disable once MethodSupportsCancellation
         await _attendanceRepository.AddAsync(attendanceLog);
+
+        try
+        {
+            await _clientHandler.BroadcastUpdateAsync(attendanceLog.ToDto(true));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to broadcast attendance update for {attendeeId} in {timetable}.", attendee, timetable);
+        }
         
-        return (AttendanceStatus.AlreadyScanned, attendee.FullName);
+        return (AttendanceStatus.Success, attendee.FullName);
     }
     
     public async Task UpdateAttendanceAsync(Guid userId, AttendanceUpdateRequestDto request, CancellationToken token = default)
@@ -136,7 +147,7 @@ public class AttendanceManager
                 }
                 else
                 {
-                    var attendanceLog = new AttendanceLogModel
+                    existingLog = new AttendanceLogModel
                     {
                         Id = Guid.NewGuid(),
                         AttendeeId = request.AttendeeId,
@@ -150,7 +161,16 @@ public class AttendanceManager
                         MarkedByType = nameof(UserModel)
                     };
                     
-                    await _attendanceRepository.AddAsync(attendanceLog, token);
+                    await _attendanceRepository.AddAsync(existingLog, token);
+                }
+                
+                try
+                {
+                    await _clientHandler.BroadcastUpdateAsync(existingLog.ToDto(true));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to broadcast attendance update for {attendeeId} in {timetable}.", attendee, timetable);
                 }
             }
         }
