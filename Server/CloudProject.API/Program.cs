@@ -28,19 +28,16 @@ builder.Services.AddIdentity<UserModel, IdentityRole<Guid>>()
     .AddEntityFrameworkStores<DatabaseContext>()
     .AddDefaultTokenProviders();
 
-if (builder.Environment.IsDevelopment())
+builder.Services.AddCors(options =>
 {
-    builder.Services.AddCors(options =>
+    options.AddPolicy("AllowMyFrontend", policy =>
     {
-        options.AddPolicy("AllowMyFrontend", policy =>
-        {
-            policy.WithOrigins("http://localhost:3000")
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
-        });
+        policy.WithOrigins("http://localhost:3000", "https://umutsen2662.github.io")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
-}
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -64,13 +61,11 @@ await using (var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>(
 }
 
 app.UseRouting();
+
+app.UseCors("AllowMyFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseCors("AllowMyFrontend");
-}
 
 app.UseWebSockets();
 app.MapControllers();
