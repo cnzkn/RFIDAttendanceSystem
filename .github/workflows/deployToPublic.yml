@@ -18,7 +18,7 @@ jobs:
       - name: Install and Build
         working-directory: ./frontend
         env:
-          VITE_API_URL: "http://cng495-api.canozkan.com.tr"
+          VITE_API_URL: "https://cng495-api.canozkan.com.tr"
         run: |
           npm ci
           npm run build
