@@ -307,7 +307,7 @@ export async function updateStudentStatus(
 		headers: {
 			"Content-Type": "application/json",
 		},
-		body: JSON.stringify({ sessionId, studentId, status }),
+		body: JSON.stringify({ timetableId: sessionId, attendeeId: studentId, status }),
 		credentials: "include",
 	});
 
