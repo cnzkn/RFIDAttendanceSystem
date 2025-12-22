@@ -17,6 +17,7 @@ public class DatabaseSeeder
 
     public async Task SeedAsync()
     {
+        return;
         _logger.LogInformation("Seeding database...");
 
         try
