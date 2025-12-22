@@ -37,6 +37,19 @@ public class CourseManager
         var sections = await _sectionRepository.WhereAsync(x => x.CourseId == course.Id, token);
         return sections.Select(x => x.ToDto()).ToArray();
     }
+
+    public async Task<AttendeeDto[]> GetSectionAttendeesAsync(Guid sectionId, CancellationToken token = default)
+    {
+        var section = await _sectionRepository.GetByIdAsync(sectionId, token);
+        if (section is null)
+        {
+            throw new ObjectNotFoundException("Section not found.");
+        }
+
+        return section.Attendees
+            .Select(x => x.ToDto(true))
+            .ToArray();
+    }
     
     public async Task DeleteCourseAsync(Guid id, CancellationToken token)
     {

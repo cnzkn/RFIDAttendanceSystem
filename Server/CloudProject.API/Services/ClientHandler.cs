@@ -6,13 +6,11 @@ public class ClientHandler : IClientHandler
     private readonly ConcurrentDictionary<Guid, Guid> _clientSessions = new(); // ClientId -> SessionId
     private readonly ILogger<ClientHandler> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly TimetableManager _timetableManager;
 
-    public ClientHandler(ILogger<ClientHandler> logger, IServiceScopeFactory scopeFactory, TimetableManager timetableManager)
+    public ClientHandler(ILogger<ClientHandler> logger, IServiceScopeFactory scopeFactory)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
-        _timetableManager = timetableManager;
     }
 
     public async Task HandleClientAsync(Guid userId, WebSocket socket)
@@ -30,7 +28,7 @@ public class ClientHandler : IClientHandler
 
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    var message = System.Text.Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
                     await HandleMessageAsync(connectionId, message);
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
@@ -79,36 +77,41 @@ public class ClientHandler : IClientHandler
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("Failed to parse client message: " + ex.Message);
+            _logger.LogWarning(ex, "Failed to parse client message.");
         }
     }
 
-    private async Task SendInitialListAsync(Guid connectionId, Guid sessionId)
+    private async Task SendInitialListAsync(Guid connectionId, Guid timetableId)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-
-        var timetable = await db.Timetables
-            .Include(t => t.CourseSection)
-            .ThenInclude(s => s.Attendees)
-            .FirstOrDefaultAsync(t => t.Id == sessionId);
-
-        if (timetable == null) return;
+        var attendanceManager = scope.ServiceProvider.GetRequiredService<AttendanceManager>();
+        var courseManager = scope.ServiceProvider.GetRequiredService<CourseManager>();
+        var timetableManager = scope.ServiceProvider.GetRequiredService<TimetableManager>();
+        
+        TimetableDto timetable;
+        try
+        {
+            timetable = await timetableManager.GetTimetableByIdAsync(timetableId);
+        }
+        catch (ObjectNotFoundException)
+        {
+            return;
+        }
 
         // Use Semester WeekNumber for filtering to ensure consistency with History and Updates
-        var currentWeek = await _timetableManager.GetCurrentWeekAsync();
+        var currentWeek = await timetableManager.GetCurrentWeekAsync();
+        
+        var logs = await attendanceManager.GetAttendanceLogsByTimetableAndWeekAsync(timetableId, currentWeek);
 
-        var logs = await db.AttendanceLogs
-            .Where(l => l.TimetableId == sessionId && l.WeekNumber == currentWeek)
-            .ToListAsync();
-
-        _logger.LogInformation($"Found {timetable.CourseSection.Attendees.Count} attendees for session {sessionId}. Logs found: {logs.Count} (Week {currentWeek})");
-
+        var attendeeList = await courseManager.GetSectionAttendeesAsync(timetable.Section.Id!.Value);
+        _logger.LogCritical("Count: {attendeeCount}", attendeeList.Length);
+        
         var studentList = new List<object>();
 
-        foreach (var attendee in timetable.CourseSection.Attendees)
+        foreach (var attendee in attendeeList)
         {
-            var log = logs.FirstOrDefault(l => l.AttendeeId == attendee.Id);
+            var log = logs.OrderByDescending(x => x.Date)
+                .FirstOrDefault(l => l.Attendee.Id == attendee.Id);
 
             studentList.Add(new
             {
@@ -116,14 +119,14 @@ public class ClientHandler : IClientHandler
                 name = attendee.FullName,
                 status = log != null ? (log.IsPresent ? "present" : "absent") : "nothing",
                 timestamp = log?.Date.ToString("o"), // ISO 8601
-                isManual = log?.MarkedByType == nameof(UserModel) // Simplified check
+                isManual = log?.Registrar is UserModel // Simplified check
             });
         }
 
         var payload = new
         {
             type = "initial_list",
-            attendanceSessionId = sessionId.ToString(),
+            attendanceSessionId = timetableId.ToString(),
             students = studentList
         };
 
@@ -134,7 +137,7 @@ public class ClientHandler : IClientHandler
 
         if (_sockets.TryGetValue(connectionId, out var socket) && socket.State == WebSocketState.Open)
         {
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+            var bytes = Encoding.UTF8.GetBytes(json);
             await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
             _logger.LogInformation($"Sent initial_list to {connectionId}. Payload size: {bytes.Length} bytes");
         }
@@ -143,36 +146,7 @@ public class ClientHandler : IClientHandler
             _logger.LogWarning($"Could not send initial_list. Socket not found or closed. ID: {connectionId}");
         }
     }
-
-    public async Task BroadcastUpdateAsync(Guid sessionId, object message)
-    {
-        var json = JsonSerializer.Serialize(message, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
-
-        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        var segment = new ArraySegment<byte>(bytes);
-
-        var tasks = new List<Task>();
-
-        foreach (var client in _clientSessions)
-        {
-            if (client.Value == sessionId)
-            {
-                if (_sockets.TryGetValue(client.Key, out var socket) && socket.State == WebSocketState.Open)
-                {
-                    tasks.Add(socket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None));
-                }
-            }
-        }
-
-        if (tasks.Any())
-        {
-            await Task.WhenAll(tasks);
-        }
-    }
-
+    
     public async Task BroadcastUpdateAsync(AttendanceLogDto log)
     {
         dynamic message = new
@@ -208,6 +182,14 @@ public class ClientHandler : IClientHandler
         if (tasks.Any())
         {
             await Task.WhenAll(tasks);
+        }
+    }
+    
+    public async Task CloseAllAsync(CancellationToken token)
+    {
+        foreach (var client in _sockets.Values)
+        {
+            await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server shutting down", token);
         }
     }
 }

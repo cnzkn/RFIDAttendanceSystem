@@ -274,7 +274,8 @@ public class DatabaseSeeder
                         SectionId = sectionId,
                         SectionType = sectionType,
                         UserId = instructor.Id,
-                        AttendeeIds = new()
+                        AttendeeIds = new(),
+                        Attendees = new()
                     };
                     
                     await _context.Sections.AddAsync(section);
@@ -301,11 +302,7 @@ public class DatabaseSeeder
                 {
                     ClassroomId = classroom.Id,
                     SectionId = section.Id,
-                    Timeslot = new TimeslotModel
-                    {
-                        DayOfWeek = dow,
-                        TimeslotNumber = time
-                    }
+                    Timeslot = new TimeslotModel(dow, time)
                 };
                 
                 await _context.Timetables.AddAsync(timetable);
@@ -364,7 +361,7 @@ public class DatabaseSeeder
                     section.AttendeeIds.Add(attendee.Id);
                     // Force EF Core to detect change by re-assigning the list
                     section.AttendeeIds = new List<Guid>(section.AttendeeIds);
-                    
+
                     section.Attendees.Add(attendee);
                     anyChange = true;
                 }

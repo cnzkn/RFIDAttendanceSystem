@@ -71,4 +71,21 @@ app.UseAuthorization();
 app.UseWebSockets();
 app.MapControllers();
 
+var moduleHandler = app.Services.GetRequiredService<IModuleHandler>();
+var clientHandler = app.Services.GetRequiredService<IClientHandler>();
+var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+
+lifetime.ApplicationStopping.Register(() =>
+{
+    Console.WriteLine("Application stopping, closing WebSockets...");
+    moduleHandler.CloseAllAsync(CancellationToken.None)
+        .GetAwaiter()
+        .GetResult();
+    
+    clientHandler.CloseAllAsync(CancellationToken.None)
+        .GetAwaiter()
+        .GetResult();
+});
+
+
 app.Run();

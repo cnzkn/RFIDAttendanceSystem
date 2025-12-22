@@ -65,7 +65,7 @@ public class AttendanceLogModel : IEntity
     [NotMapped]
     private IEntityResolver<IAttendanceRegistrar, Guid> _resolver;
 
-    internal void AttachResolver(IEntityResolver<IAttendanceRegistrar, Guid> resolver)
+    public void AttachResolver(IEntityResolver<IAttendanceRegistrar, Guid> resolver)
     {
         _resolver = resolver;
     }

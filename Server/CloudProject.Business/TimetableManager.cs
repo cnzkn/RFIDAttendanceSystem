@@ -50,23 +50,41 @@ public class TimetableManager
             return null;
         }
         
-        var utcStart = TimeSpan.FromMinutes(400);
-        
-        var localNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.Local);
-        var localStart = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow + utcStart, TimeZoneInfo.Local);
-        
-        var slot = (int)(localNow - localStart).TotalHours;
-
-        if (slot is < 0 or > 14)
+        TimeZoneInfo tz;
+        try
         {
+            tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Athens");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            // Fallback for Windows
+            tz = TimeZoneInfo.FindSystemTimeZoneById("E. Europe Standard Time");
+        }
+
+        var utcNow = DateTime.UtcNow;
+        var localNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, tz);
+    
+        var localStart = new DateTime(localNow.Year, localNow.Month, localNow.Day, 8, 40, 0, DateTimeKind.Unspecified);
+        var localEnd = localStart.AddHours(14);
+
+        var utcStart = TimeZoneInfo.ConvertTimeToUtc(localStart, tz);
+        var utcEnd = TimeZoneInfo.ConvertTimeToUtc(localEnd, tz);
+
+        var diff = localNow - localStart;
+        var slot = ((int)diff.TotalHours) + 1;
+        
+        if (diff.Minutes >= 50)
+        {
+            slot++;
+        }
+
+        if (slot is < 1 or > 14)
+        {
+            _logger.LogWarning("Not in timeslot hours. It starts at {start} ({utcStart}) and ends at {end} ({utcEnd}). Current time: {now}.", localStart.ToString("HH:mm"), utcStart.ToString("HH:mm"), localEnd.ToString("HH:mm"), utcEnd.ToString("HH:mm"), localNow.ToString("HH:mm"));
             return null;
         }
-        
-        return new TimeslotModel
-        {
-            DayOfWeek = localNow.DayOfWeek,
-            TimeslotNumber = slot
-        };
+
+        return new TimeslotModel(localNow.DayOfWeek, slot);
     }
     
     internal async Task<TimetableModel?> InternalGetTimetableByIdAsync(Guid timetableId, CancellationToken token = default)
@@ -155,6 +173,6 @@ public class TimetableManager
             throw new ObjectNotFoundException("Timetable not found.");
         }
 
-        return timetable.ToDto();
+        return timetable.ToDto(true);
     }
 }

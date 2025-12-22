@@ -60,7 +60,7 @@ public static class DtoConverters
             return new SectionDto()
             {
                 Id = includeIds ? model.Id : null,
-                Course = model.Course?.ToDto(),
+                Course = model.Course?.ToDto(includeIds),
                 Section = model.SectionType + model.SectionId,
                 User = model.User.ToDto()
             };
@@ -74,8 +74,8 @@ public static class DtoConverters
             return new TimetableDto()
             {
                 Id = includeIds ? model.Id : null,
-                Classroom = model.Classroom?.ToDto(),
-                Section = model.CourseSection?.ToDto(),
+                Classroom = model.Classroom?.ToDto(includeIds),
+                Section = model.CourseSection?.ToDto(includeIds),
                 Timeslot = model.Timeslot
             };
         }
@@ -104,6 +104,7 @@ public static class DtoConverters
                 Date = model.Date,
                 WeekNumber = model.WeekNumber,
                 Attendee = model.Attendee.ToDto(includeIds),
+                Timetable = model.Timetable.ToDto(includeIds),
                 Registrar = model.Registrar!,
                 IsPresent = model.IsPresent
             };

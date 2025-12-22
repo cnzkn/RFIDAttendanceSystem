@@ -4,16 +4,18 @@ public class AttendanceManager
 {
     private readonly ILogger<AttendanceManager> _logger;
     private readonly IRepository<AttendanceLogModel> _attendanceRepository;
+    private readonly DatabaseContext _databaseContext;
     private readonly AttendeeManager _attendeeManager;
     private readonly DeviceManager _deviceManager;
     private readonly TimetableManager _timetableManager;
     private readonly UserManager _userManager;
     private readonly IClientHandler _clientHandler;
 
-    public AttendanceManager(ILogger<AttendanceManager> logger, IRepository<AttendanceLogModel> attendanceRepository, AttendeeManager attendeeManager, DeviceManager deviceManager, TimetableManager timetableManager, UserManager userManager, IClientHandler clientHandler)
+    public AttendanceManager(ILogger<AttendanceManager> logger, IRepository<AttendanceLogModel> attendanceRepository, DatabaseContext databaseContext, AttendeeManager attendeeManager, DeviceManager deviceManager, TimetableManager timetableManager, UserManager userManager, IClientHandler clientHandler)
     {
         _logger = logger;
         _attendanceRepository = attendanceRepository;
+        _databaseContext = databaseContext;
         _attendeeManager = attendeeManager;
         _deviceManager = deviceManager;
         _timetableManager = timetableManager;
@@ -32,6 +34,7 @@ public class AttendanceManager
         var attendee = await _attendeeManager.InternalGetByCardAsync(cardId, token);
         if (attendee is null)
         {
+            _logger.LogInformation("Card ID {cardId} not recognized by device {deviceId}.", Convert.ToHexString(cardId), device.Id);
             return (AttendanceStatus.UnrecognizedId, null);
         }
 
@@ -40,17 +43,20 @@ public class AttendanceManager
         if (currentTimeslot is null)
         {
             // No timeslot means there can't be any lecture right now.
+            _logger.LogInformation("{deviceId} tried to record attendance outside of timetable hours when recording attendance for attendee {attendeeId}.", device.Id, attendee.Id);
             return (AttendanceStatus.NoLecture, null);
         }
         
         var timetable = await _timetableManager.InternalGetClassroomTimetableAsync(device.AssignedClassroomId, token);
-        if (timetable.FirstOrDefault(x => x.Timeslot != currentTimeslot) is not { } slot)
+        if (timetable.FirstOrDefault(x => x.Timeslot == currentTimeslot) is not { } slot)
         {
+            _logger.LogInformation("No matching timetable at {day} slot {week} found for classroom {class} for device {deviceId} when recording attendance for attendee {attendeeId}.", currentTimeslot.DayOfWeek, currentTimeslot.TimeslotNumber, device.AssignedClassroom.Name, device.Id, attendee.Id);
             return (AttendanceStatus.NoLecture, null);
         }
 
         if (!slot.CourseSection.AttendeeIds.Contains(attendee.Id))
         {
+            _logger.LogInformation("Attendee {attendeeId} is not registered in section {sectionId} for timetable {timetableId}.", attendee.Id, slot.SectionId, slot.Id);
             return (AttendanceStatus.NotRegistered, null);
         }
         
@@ -62,6 +68,7 @@ public class AttendanceManager
         if (existingLog is { IsPresent: true })
         {
             // Maybe return AlreadyScanned if MarkedByType == UserModel too? Don't let devices override student scans?
+            _logger.LogInformation("Attendee {attendeeId} has already scanned for timetable {timetableId} on week {weekNumber}.", attendee.Id, slot.Id, weekNumber);
             return (AttendanceStatus.AlreadyScanned, null);
         }
         
@@ -73,14 +80,17 @@ public class AttendanceManager
             Date = DateTime.UtcNow,
             WeekNumber = weekNumber,
             IsPresent = true,
-            MarkedById = device.Id,
+            MarkedById = device.Id, // Assigning Registrar directly causes Exception.
             MarkedByType = nameof(DeviceModel)
         };
-
+        
+        attendanceLog.AttachResolver(new AttendanceRegistrarEntityResolver(_databaseContext));
+        
         // Don't cancel at this point.
         // ReSharper disable once MethodSupportsCancellation
         await _attendanceRepository.AddAsync(attendanceLog);
-
+        await _attendanceRepository.CommitAsync(token);
+        
         try
         {
             await _clientHandler.BroadcastUpdateAsync(attendanceLog.ToDto(true));
@@ -89,6 +99,8 @@ public class AttendanceManager
         {
             _logger.LogError(ex, "Failed to broadcast attendance update for {attendeeId} in {timetable}.", attendee, timetable);
         }
+        
+        attendanceLog.AttachResolver(null);
         
         return (AttendanceStatus.Success, attendee.FullName);
     }
@@ -201,17 +213,18 @@ public class AttendanceManager
         var result = new List<AttendanceHistoryDto>();
         
         var logs = (await _attendanceRepository.WhereAsync(x => x.Timetable.CourseSection.CourseId == courseId, token)).ToList();
-
+        
         // Group by Section
         var timetablesBySection = timetables.GroupBy(t => t.SectionId);
 
         foreach (var sectionGroup in timetablesBySection)
         {
             // Use the first timetable to get section info (they all belong to same section)
-            var sectionInfo = sectionGroup.First().CourseSection;
+            var section = sectionGroup.First().CourseSection;
             
-            var attendees = sectionInfo.Attendees ?? [];
-            var studentDtos = attendees.Select(a => a.ToDto(true)).ToList();
+            var attendees = section.Attendees;
+            
+            var attendeeDtos = attendees.Select(a => a.ToDto(true)).ToList();
             
             var weekNumbers = await _timetableManager.GetTotalWeeksInCurrentSemesterAsync(token);
             
@@ -236,8 +249,6 @@ public class AttendanceManager
                         {
                             (item.IsPresent ? presentList : absentList).Add(attendee.Id);
                         }
-                        // If no log exists, do NOT add to either list. 
-                        // This allows the frontend to interpret "missing from both" as "Pending".
                     }
                     
                     var attendanceDict = new Dictionary<AttendanceRegisterType, List<Guid>>
@@ -259,8 +270,8 @@ public class AttendanceManager
 
             result.Add(new AttendanceHistoryDto
             {
-                Section = sectionInfo.ToDto(true),
-                Students = studentDtos,
+                Section = section.ToDto(true),
+                Students = attendeeDtos,
                 Timetables = timetableDtos
             });
         }
@@ -268,4 +279,9 @@ public class AttendanceManager
         return result;
     }
 
+    public async Task<List<AttendanceLogDto>> GetAttendanceLogsByTimetableAndWeekAsync(Guid timetableId, int currentWeek)
+    {
+        var logs = await _attendanceRepository.WhereAsync(x => x.TimetableId == timetableId && x.WeekNumber == currentWeek);
+        return logs.Select(x => x.ToDto(true)).ToList();
+    }
 }

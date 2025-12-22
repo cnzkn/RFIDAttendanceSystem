@@ -1,4 +1,5 @@
 using CloudProject.Database.Repositories;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CloudProject.Database;
@@ -18,6 +19,7 @@ public static class DatabaseExtensions
 
             options.UseNpgsql($"Host={host};Port={port};Username={user};Password={pass};Database={name};SslMode={ssl};Trust Server Certificate=true;");
             options.UseLazyLoadingProxies();
+            options.ConfigureWarnings(x => x.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         });
         
         services.AddScoped<DatabaseSeeder>();

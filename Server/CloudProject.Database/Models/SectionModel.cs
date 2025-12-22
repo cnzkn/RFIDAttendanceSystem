@@ -35,7 +35,7 @@ public class SectionModel : IEntity
     /// </summary>
     [Required]
     public List<Guid> AttendeeIds { get; set; }
-    
+
     
     [ForeignKey(nameof(UserId))] // C# auto-map
     public virtual UserModel User { get; set; }

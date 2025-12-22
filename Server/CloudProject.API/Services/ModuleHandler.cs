@@ -138,4 +138,12 @@ public class ModuleHandler : IModuleHandler
             _logger.LogInformation("Client {fingerprint} disconnected.", client.Id);
         }
     }
+
+    public async Task CloseAllAsync(CancellationToken token)
+    {
+        foreach (var client in _connections.Values)
+        {
+            await client.Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server shutting down", token);
+        }
+    }
 }
