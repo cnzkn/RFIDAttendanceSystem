@@ -86,6 +86,9 @@ public class AttendanceManager
         
         attendanceLog.AttachResolver(new AttendanceRegistrarEntityResolver(_databaseContext));
         
+        attendanceLog.Timetable = slot;
+        attendanceLog.Attendee = attendee;
+
         // Don't cancel at this point.
         // ReSharper disable once MethodSupportsCancellation
         await _attendanceRepository.AddAsync(attendanceLog);
@@ -176,6 +179,10 @@ public class AttendanceManager
                     await _attendanceRepository.AddAsync(existingLog, token);
                 }
                 
+                existingLog.Timetable = timetable;
+                existingLog.Attendee = attendee;
+                existingLog.AttachResolver(new AttendanceRegistrarEntityResolver(_databaseContext));
+
                 try
                 {
                     await _clientHandler.BroadcastUpdateAsync(existingLog.ToDto(true));

@@ -7,7 +7,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { BlockyButton } from "@/components/ui/BlockyButton";
 import { BlockyCard } from "@/components/ui/BlockyCard";
-import { fetchCourseHistory, saveHistoryChanges } from "@/lib/api";
+import { fetchCourseHistory, saveHistoryChanges, exportHistoryCsv } from "@/lib/api";
 
 const historyQueryOptions = (courseCode: string, section: string) =>
 	queryOptions({
@@ -105,6 +105,15 @@ function HistoryComponent() {
 		}
 	};
 
+    const handleExport = async () => {
+        try {
+            await exportHistoryCsv(courseCode, section);
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Failed to export CSV");
+        }
+    };
+
 	const hasChanges = Object.keys(edits).length > 0;
 
 	// Generate headers: w1-1, w1-2, ..., w14-2
@@ -142,6 +151,12 @@ function HistoryComponent() {
 								{data.section}
 							</div>
 						</div>
+						<button
+							onClick={handleExport}
+							className="text-xs font-bold uppercase tracking-wider border-2 border-blue-600 text-blue-600 px-2 py-1 hover:bg-blue-600 hover:text-white hover:underline transition-all cursor-pointer"
+						>
+							Export CSV
+						</button>
 					</div>
 				</div>
 

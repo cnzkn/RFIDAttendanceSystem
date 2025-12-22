@@ -48,7 +48,7 @@ public class HistoryController : ControllerEx
         var filteredHistory = history.Where(h => h.Section.Section == section).ToList();
         
         StringBuilder sb = new StringBuilder();
-        sb.AppendLine("Date,CourseId,CourseName,WeekNumber,TimeslotDay,TimeslotTime,StudentId,StudentName,Present");
+        sb.AppendLine("CourseCode,CourseName,Section,WeekNumber,TimeslotDay,TimeslotTime,StudentId,StudentName,Present");
         
         foreach (var sectionHistory in filteredHistory)
         {
@@ -63,13 +63,13 @@ public class HistoryController : ControllerEx
                         var present = session.Attendance.ContainsKey(AttendanceRegisterType.Present) && 
                                       session.Attendance[AttendanceRegisterType.Present].Contains(student.Id.Value);
                         
-                        sb.AppendLine($"{course.Id},{course.Name},{session.WeekNumber},{timetable.Timeslot.DayOfWeek},{timetable.Timeslot.TimeslotNumber},{student.StudentID},{student.FullName},{present}");
+                        sb.AppendLine($"{course.Code},{course.Name},{section},{session.WeekNumber},{timetable.Timeslot.DayOfWeek},{timetable.Timeslot.TimeslotNumber},{student.StudentID},{student.FullName},{present}");
                     }
                 }
             }
         }
         
-        return File(sb.ToString(), "text/csv", $"{course.Name}_{section}_AttendanceHistory.csv");
+        return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", $"{course.Name}_{section}_AttendanceHistory.csv");
     }
 
     [HttpPost("{courseCode}/{section}")]

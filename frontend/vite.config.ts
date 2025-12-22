@@ -50,6 +50,26 @@ export default defineConfig({
                 changeOrigin: true,
                 secure: false,
             },
+            '/history': {
+                target: 'http://localhost:5075',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/History': {
+                target: 'http://localhost:5075',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/Course': {
+                target: 'http://localhost:5075',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/course': {
+                target: 'http://localhost:5075',
+                changeOrigin: true,
+                secure: false,
+            },
             '/ws': {
                 target: 'http://localhost:5075',
                 ws: true,

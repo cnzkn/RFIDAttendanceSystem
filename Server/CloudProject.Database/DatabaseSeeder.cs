@@ -293,7 +293,7 @@ public class DatabaseSeeder
                 DayOfWeek dow = (DayOfWeek)slot.GetProperty("day").GetInt32();
                 int time = slot.GetProperty("time").GetInt32();
 
-                if (await _context.Timetables.AnyAsync(x => x.SectionId == section.Id && x.ClassroomId == classroom.Id && x.Timeslot.DayOfWeek == dow && x.Timeslot.TimeslotNumber == time))
+                if (await _context.Timetables.AnyAsync(x => x.SectionId == section.Id && x.Timeslot.DayOfWeek == dow && x.Timeslot.TimeslotNumber == time))
                 {
                     _logger.LogDebug("A timetable entry for {course} {section} at {day} slot {time} already exists. Skipping...", courseName, sectionType + sectionId, dow, time);
                     continue;

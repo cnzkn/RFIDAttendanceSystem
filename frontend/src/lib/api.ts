@@ -257,6 +257,37 @@ export async function fetchCourseHistory(
 	return toUIHistory(data);
 }
 
+export async function exportHistoryCsv(
+	courseCode: string,
+	section: string,
+) {
+	console.log("API: exportHistoryCsv called", { courseCode, section });
+
+	const response = await fetch(
+		`${API_BASE_URL}/history/${courseCode}/${section}/csv`,
+		{
+			credentials: "include",
+		},
+	);
+
+	if (!response.ok) {
+		console.error("API: exportHistoryCsv failed", response.status);
+		throw new Error("Failed to export history");
+	}
+
+	const blob = await response.blob();
+	const url = window.URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = `${courseCode}_${section}_Attendance.csv`;
+	document.body.appendChild(a);
+	a.click();
+	window.URL.revokeObjectURL(url);
+	document.body.removeChild(a);
+
+	console.log("API: exportHistoryCsv success");
+}
+
 // --- WebSocket Helpers ---
 export function createSocketConnection(): WebSocket {
 	const wsUrl = getWebSocketURL(API_BASE_URL);
