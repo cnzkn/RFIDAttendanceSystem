@@ -1,8 +1,3 @@
-using CloudProject.Business;
-using CloudProject.Business.Exceptions;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
 namespace CloudProject.API.Controllers;
 
 [Authorize]
@@ -21,11 +16,11 @@ public class HistoryController : ControllerEx
         _attendanceManager = attendanceManager;
     }
 
-    [HttpGet("/Attendance/history/{courseCode}/{section}")]
+    [HttpGet("{courseCode}/{section}")]
     public async Task<IActionResult> GetHistory(int courseCode, string section, CancellationToken token)
     {
         var course = await _courseManager.GetByCodeAsync(courseCode, token);
-        if (course == null || course.Id == null)
+        if (course?.Id == null)
         {
             return NotFound($"Course code '{courseCode}' not found.");
         }
@@ -37,8 +32,47 @@ public class HistoryController : ControllerEx
         
         return Ok(filteredHistory);
     }
+    
+    [HttpGet("{courseCode}/{section}/csv")]
+    public async Task<IActionResult> ExportHistory(int courseCode, string section, CancellationToken token)
+    {
+        var course = await _courseManager.GetByCodeAsync(courseCode, token);
+        if (course?.Id == null)
+        {
+            return NotFound($"Course code '{courseCode}' not found.");
+        }
 
-    [HttpPost("/Attendance/history/update/{courseCode}/{section}")]
+        var history = await _attendanceManager.GetAttendanceHistoryAsync(course.Id.Value, token);
+        
+        // Filter by section
+        var filteredHistory = history.Where(h => h.Section.Section == section).ToList();
+        
+        StringBuilder sb = new StringBuilder();
+        sb.AppendLine("Date,CourseId,CourseName,WeekNumber,TimeslotDay,TimeslotTime,StudentId,StudentName,Present");
+        
+        foreach (var sectionHistory in filteredHistory)
+        {
+            foreach (var timetable in sectionHistory.Timetables)
+            {
+                foreach (var session in timetable.Sessions)
+                {
+                    foreach (var student in sectionHistory.Students)
+                    {
+                        if (student.Id == null) continue;
+                        
+                        var present = session.Attendance.ContainsKey(AttendanceRegisterType.Present) && 
+                                      session.Attendance[AttendanceRegisterType.Present].Contains(student.Id.Value);
+                        
+                        sb.AppendLine($"{course.Id},{course.Name},{session.WeekNumber},{timetable.Timeslot.DayOfWeek},{timetable.Timeslot.TimeslotNumber},{student.StudentID},{student.FullName},{present}");
+                    }
+                }
+            }
+        }
+        
+        return File(sb.ToString(), "text/csv", $"{course.Name}_{section}_AttendanceHistory.csv");
+    }
+
+    [HttpPost("{courseCode}/{section}")]
     public async Task<IActionResult> UpdateHistory(int courseCode, string section, [FromBody] BulkAttendanceUpdateRequestDto request, CancellationToken token)
     {
         var userId = GetCurrentUserId();
