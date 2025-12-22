@@ -48,6 +48,7 @@ builder.Services.AddControllers()
 builder.Services.AddScoped<IEntityResolver<IAttendanceRegistrar, Guid>, AttendanceRegistrarEntityResolver>();
 builder.Services.AddScoped<ICertificateValidator, DeviceCertificateValidator>();
 builder.Services.AddSingleton<IModuleHandler, ModuleHandler>();
+builder.Services.AddSingleton<IClientHandler, ClientHandler>();
 
 var app = builder.Build();
 

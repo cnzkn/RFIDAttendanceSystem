@@ -210,7 +210,7 @@ public class AttendanceManager
             // Use the first timetable to get section info (they all belong to same section)
             var sectionInfo = sectionGroup.First().CourseSection;
             
-            var attendees = sectionInfo.Attendees ?? new List<AttendeeModel>();
+            var attendees = sectionInfo.Attendees ?? [];
             var studentDtos = attendees.Select(a => a.ToDto(true)).ToList();
             
             var weekNumbers = await _timetableManager.GetTotalWeeksInCurrentSemesterAsync(token);
@@ -230,15 +230,16 @@ public class AttendanceManager
 
                     List<Guid> presentList = new(), absentList = new();
 
-                                    foreach (var attendee in attendees)
-                                    {
-                                        if (weekLogs.FirstOrDefault(x => x.AttendeeId == attendee.Id) is { } item)
-                                        {
-                                            (item.IsPresent ? presentList : absentList).Add(attendee.Id);
-                                        }
-                                        // If no log exists, do NOT add to either list. 
-                                        // This allows the frontend to interpret "missing from both" as "Pending".
-                                    }
+                    foreach (var attendee in attendees)
+                    {
+                        if (weekLogs.FirstOrDefault(x => x.AttendeeId == attendee.Id) is { } item)
+                        {
+                            (item.IsPresent ? presentList : absentList).Add(attendee.Id);
+                        }
+                        // If no log exists, do NOT add to either list. 
+                        // This allows the frontend to interpret "missing from both" as "Pending".
+                    }
+                    
                     var attendanceDict = new Dictionary<AttendanceRegisterType, List<Guid>>
                     {
                         { AttendanceRegisterType.Present, presentList },
@@ -258,7 +259,7 @@ public class AttendanceManager
 
             result.Add(new AttendanceHistoryDto
             {
-                Section = sectionInfo.ToDto(),
+                Section = sectionInfo.ToDto(true),
                 Students = studentDtos,
                 Timetables = timetableDtos
             });

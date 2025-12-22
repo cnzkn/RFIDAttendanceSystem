@@ -6,6 +6,7 @@ global using System.ComponentModel.DataAnnotations.Schema;
 global using System.Net.WebSockets;
 global using System.Security.Claims;
 global using System.Security.Cryptography.X509Certificates;
+global using System.Text;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
 global using CloudProject.API.Services;

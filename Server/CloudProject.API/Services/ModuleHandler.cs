@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace CloudProject.API.Services;
+﻿namespace CloudProject.API.Services;
 
 public record WebSocketConnection(string Id, WebSocket Socket, DateTime ConnectedAt);
 
