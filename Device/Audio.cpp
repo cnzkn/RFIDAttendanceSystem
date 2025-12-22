@@ -16,7 +16,7 @@ struct {
 
 bool audioInit() {
   ledcAttach(BUZZER_PIN, 2000, 8);
-  ledcWriteTone(AUDIO_CHANNEL, 0);
+  ledcWriteTone(BUZZER_PIN, 0);
   return true;
 }
 
@@ -25,20 +25,20 @@ void audioTick() {
 
   if (audioState.active && audioState.sequence == nullptr) {
     if (now >= audioState.stopTime) {
-      ledcWriteTone(AUDIO_CHANNEL, 0);
+      ledcWriteTone(BUZZER_PIN, 0);
       audioState.active = false;
     }
   }
 
   else if (audioState.sequence != nullptr && audioState.active) {
     if (now >= audioState.nextStepTime) {
-      ledcWriteTone(AUDIO_CHANNEL, 0);
+      ledcWriteTone(BUZZER_PIN, 0);
 
       audioState.currentStep++;
       if (audioState.currentStep < audioState.sequenceLength) {
         int freq = audioState.sequence[audioState.currentStep][0];
         int dur  = audioState.sequence[audioState.currentStep][1];
-        ledcWriteTone(AUDIO_CHANNEL, freq);
+        ledcWriteTone(BUZZER_PIN, freq);
         audioState.nextStepTime = now + dur;
       } else {
         audioState.sequence = nullptr;
@@ -49,7 +49,7 @@ void audioTick() {
 }
 
 void playTone(int freq, int duration) {
-  ledcWriteTone(AUDIO_CHANNEL, freq);
+  ledcWriteTone(BUZZER_PIN, freq);
   audioState.active = true;
   audioState.sequence = nullptr;
   audioState.freq = freq;
@@ -65,7 +65,7 @@ void playSuccessSound() {
   audioState.sequenceLength = sizeof(successSequence) / sizeof(successSequence[0]);
   audioState.currentStep = 0;
   audioState.active = true;
-  ledcWriteTone(AUDIO_CHANNEL, successSequence[0][0]);
+  ledcWriteTone(BUZZER_PIN, successSequence[0][0]);
   audioState.nextStepTime = millis() + successSequence[0][1];
 }
 
@@ -80,7 +80,7 @@ void playBadReadSound() {
   audioState.sequenceLength = sizeof(badSequence) / sizeof(badSequence[0]);
   audioState.currentStep = 0;
   audioState.active = true;
-  ledcWriteTone(AUDIO_CHANNEL, badSequence[0][0]);
+  ledcWriteTone(BUZZER_PIN, badSequence[0][0]);
   audioState.nextStepTime = millis() + badSequence[0][1];
 }
 
@@ -101,6 +101,6 @@ void playComFailSound() {
   audioState.sequenceLength = sizeof(comFailSequence) / sizeof(comFailSequence[0]);
   audioState.currentStep = 0;
   audioState.active = true;
-  ledcWriteTone(AUDIO_CHANNEL, comFailSequence[0][0]);
+  ledcWriteTone(BUZZER_PIN, comFailSequence[0][0]);
   audioState.nextStepTime = millis() + comFailSequence[0][1];
 }

@@ -3,9 +3,12 @@
 #include "API.h"
 
 struct {
-  char assignedClassroom[7];
-  char currentLecture[8];
+  char assignedClassroom[8];
+  char currentLecture[9];
+  bool moduleDataChanged = false;
   int time;
+  AttendanceStatus lastScanStatus = SCAN_INVALID;
+  char lastScanName[256];
 } moduleStatus;
 
 void apiInit() {
@@ -16,7 +19,10 @@ void apiInit() {
   moduleStatus.assignedClassroom[1] = '-';
   moduleStatus.assignedClassroom[2] = '-';
   moduleStatus.assignedClassroom[3] = 0;
-  moduleStatus.currentLecture[0] = 0;
+  moduleStatus.currentLecture[0] = '-';
+  moduleStatus.currentLecture[1] = '-';
+  moduleStatus.currentLecture[2] = '-';
+  moduleStatus.currentLecture[3] = 0;
 }
 
 void apiTick() {
@@ -50,9 +56,52 @@ const char* getLecture() {
 }
 
 void setClassroom(const char* text) {
-  strncpy(moduleStatus.assignedClassroom, text, min(strlen(text), 6));
+  int length = MIN(strlen(text), 7);
+  strncpy(moduleStatus.assignedClassroom, text, length);
+  moduleStatus.assignedClassroom[length] = 0;
+  moduleStatus.moduleDataChanged = true;
 }
 
 void setLecture(const char* text) {
-  strncpy(moduleStatus.currentLecture, text, min(strlen(text), 7));
+  int length = MIN(strlen(text), 8);
+  strncpy(moduleStatus.currentLecture, text, length);
+  moduleStatus.currentLecture[length] = 0;
+  moduleStatus.moduleDataChanged = true;
+}
+
+bool moduleDataChanged() {
+  return moduleStatus.moduleDataChanged;
+}
+
+void clearModuleDataChanged() {
+  moduleStatus.moduleDataChanged = false;
+}
+
+bool hasScanResult() {
+  return moduleStatus.lastScanStatus != SCAN_INVALID;
+}
+
+AttendanceStatus getScanResult() {
+  AttendanceStatus val = moduleStatus.lastScanStatus;
+  moduleStatus.lastScanStatus = SCAN_INVALID;
+  return val;
+}
+
+int getScanName(char* out) {
+  int len = MIN(strlen(out), 255);
+  strncpy(out, moduleStatus.lastScanName, len);
+  return len;
+}
+
+void setScanResult(uint8_t status, char* name) {
+  if (hasScanResult()) {
+    serialPrint("WARNING! A new scan result arrived before the previous one could be handled. Overwriting the old result... (This may potentially cause issues)");
+  }
+
+  moduleStatus.lastScanStatus = (AttendanceStatus)status;
+  if (name == 0) {
+    moduleStatus.lastScanName[0] = 0;
+  } else {
+    strncpy(moduleStatus.lastScanName, name, MIN(strlen(name), 255));
+  }
 }

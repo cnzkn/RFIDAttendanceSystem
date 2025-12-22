@@ -7,54 +7,58 @@
 
 const char* ssid = "{WIFI_NET_SSID}"; // Automatically attached at build
 const char* password = "{WIFI_NET_PASSWORD}"; // Automatically attached at build
-const char* server = "cng495.canozkan.com.tr";
+const char* server = "cng495-api.canozkan.com.tr";
 const int port = 443;
 const char* path = "/ws/device";
 
-bool wifiConnected = false;
-bool wsConnected = false;
-bool syncingClock = false;
+struct {
+  bool wifiConnected = false;
+  bool wsConnected = false;
+  bool syncingClock = false;
 
-WebSocketsClient webSocket;
-WiFiClientSecure client;
+  WebSocketsClient webSocket;
+  WiFiClientSecure client;
+} webStatus;
 
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length);
-void setClock();
 
 bool webInit() {
   WiFi.begin(ssid, password);
-
-  webSocket.beginSslWithCA(server, port, path, root_ca);
-  webSocket.setSSLClientCertKey(client_cert, client_key);
-
-  webSocket.onEvent(webSocketEvent);
-  webSocket.setReconnectInterval(3000);
-
   return true;
+}
+
+bool isServiceConnected() {
+  return webStatus.wsConnected;
 }
 
 void webTick() {
   if (WiFi.status() != WL_CONNECTED) {
-    if (wifiConnected) {
+    if (webStatus.wifiConnected) {
       serialPrint("Disconnected from Wi-Fi. Attempting to reconnect...");
-      wifiConnected = false;
+      webStatus.wifiConnected = false;
+      webStatus.wsConnected = false;
     }
     return;
   }
 
-  if (!wifiConnected) {
+  if (!webStatus.wifiConnected) {
     serialPrint("Connected to Wi-Fi.");
     setClock();
-    wifiConnected = true;
+    webStatus.wifiConnected = true;
+    
+    webStatus.webSocket.setSSLClientCertKey(client_cert, client_key);
+    webStatus.webSocket.beginSslWithCA(server, port, path, root_ca_server);
+    webStatus.webSocket.onEvent(webSocketEvent);
+    webStatus.webSocket.setReconnectInterval(3000);
   }
 
-  if (syncingClock) {
-    time_t nowSecs = time(nullptr);
-    if (nowSecs > 8 * 3600 * 2) {
-      struct tm timeinfo;
-      gmtime_r(&nowSecs, &timeinfo);
+  webStatus.webSocket.loop();
+
+  if (webStatus.syncingClock) {
+    struct tm timeinfo;
+    if (getLocalTime(&timeinfo)) {
       serialPrint("Clock synchronization complete. Current time: %s", asctime(&timeinfo));
-      syncingClock = false;
+      webStatus.syncingClock = false;
     }
   }
 }
@@ -62,35 +66,62 @@ void webTick() {
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
   switch(type) {
     case WStype_CONNECTED:
-      Serial.println("Connected to server.");
-      webSocket.sendBIN((uint8_t*)&PKT_REQUESTINFO, 4);
+      serialPrint("Connected to server.");
+      webStatus.wsConnected = true;
+      requestModuleData();
       break;
     case WStype_BIN:
       if (length >= 4) {
         uint32_t hdr = *(uint32_t*)payload;
         switch(hdr) {
-          case RSP_MODULEINFO: {
-            // setClassroom(payload + 4);
-            // int len = strlen(payload + 4) + 1;
-            // setLecture(payload + 4 + len);
+          case RSP_MODULEINFO: { // <Classroom:M><NULL><Lecture:N><NULL>
+            setClassroom((char*)(payload + 4));
+            int len = strlen((char*)(payload + 4)) + 1;
+            setLecture((char*)(payload + 4 + len));
+            serialPrint("Classroom: %s - Lecture: %s", getClassroom(), getLecture());
             break;
           }
 
-          case RSP_SCANRESULT: {
+          case RSP_SCANRESULT: { // <Result:8> | <Result:8><Name:N><NULL>
+            uint8_t status = *(payload + 4);
+            char* name = NULL;
+
+            if (status == 0) {
+              char buf[256];
+              strncpy(buf, (char*)(payload + 5), MIN(length - 5, 255));
+              name = buf;
+            }
+
+            setScanResult(status, name);
+            serialPrint("Scan Result: %d", status);
             break;
           }
         }
       }
-      Serial.printf("Received: %s\n", payload);
       break;
     case WStype_DISCONNECTED:
-      Serial.println("Lost connection to server.");
+      serialPrint("Lost connection to server.");
+      webStatus.wsConnected = false;
       break;
   }
 }
 
 void setClock() {
-  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  configTime(UTC_OFFSET_WINTER, UTC_OFFSET_SUMMER, "pool.ntp.org", "time.nist.gov");
   serialPrint("Waiting for NTP time sync...");
-  syncingClock = true;
+  webStatus.syncingClock = true;
+}
+
+void requestModuleData() {
+  webStatus.webSocket.sendBIN((uint8_t*)&PKT_REQUESTINFO, 4);
+}
+
+void sendCardRead(uint8_t* id, uint8_t length) {
+  uint8_t packet[13];
+  
+  *(uint32_t*)packet = PKT_SUBMITSCAN;
+  *(uint8_t*)(packet + 4) = length;
+  memcpy(packet + 5, id, length);
+
+  webStatus.webSocket.sendBIN(packet, 5 + length);
 }

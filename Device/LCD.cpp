@@ -24,7 +24,7 @@ bool lcdInit() {
   Serial.print("Using LCD at address 0x");
   Serial.println(lcdAddress, HEX);
 
-  lcd = new LiquidCrystal_I2C(lcdAddress, 20, 4);
+  lcd = new LiquidCrystal_I2C(lcdAddress, LCD_WIDTH, LCD_HEIGHT);
   lcd->init();
   lcd->backlight();
   lcd->setCursor(0,0);

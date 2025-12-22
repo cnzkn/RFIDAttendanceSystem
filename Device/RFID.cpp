@@ -81,7 +81,7 @@ void rfidDisable() {
   rfidAntenna = false;
 }
 
-RFIDReadStatus rfidRead(byte* id, byte* length) {
+RFIDReadStatus rfidRead(uint8_t* id, uint8_t* length) {
   if (mfrc522 == nullptr) return READ_NOTINIT;
 
   if (!mfrc522->PICC_IsNewCardPresent()) {

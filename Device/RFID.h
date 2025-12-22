@@ -16,4 +16,4 @@ bool rfidActive();
 
 void rfidEnable();
 void rfidDisable();
-RFIDReadStatus rfidRead(byte* id, byte* length);
+RFIDReadStatus rfidRead(uint8_t* id, uint8_t* length); // "id" must be 8 bytes.
