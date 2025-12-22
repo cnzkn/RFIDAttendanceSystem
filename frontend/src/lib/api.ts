@@ -240,7 +240,7 @@ export async function fetchCourseHistory(
 	console.log("API: fetchCourseHistory called", { courseCode, section });
 
 	const response = await fetch(
-		`${API_BASE_URL}/Attendance/history/${courseCode}/${section}`,
+		`${API_BASE_URL}/history/${courseCode}/${section}`,
 		{
 			credentials: "include",
 		},
@@ -446,7 +446,7 @@ export async function saveHistoryChanges(
 	});
 
 	const response = await fetch(
-		`${API_BASE_URL}/Attendance/history/update/${courseCode}/${section}`,
+		`${API_BASE_URL}/history/${courseCode}/${section}`,
 		{
 			method: "POST",
 			headers: {
