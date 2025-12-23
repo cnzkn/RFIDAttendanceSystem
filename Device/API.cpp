@@ -88,8 +88,9 @@ AttendanceStatus getScanResult() {
 }
 
 int getScanName(char* out) {
-  int len = MIN(strlen(out), 255);
+  int len = strlen(moduleStatus.lastScanName);
   strncpy(out, moduleStatus.lastScanName, len);
+  out[len] = 0;
   return len;
 }
 
@@ -99,9 +100,11 @@ void setScanResult(uint8_t status, char* name) {
   }
 
   moduleStatus.lastScanStatus = (AttendanceStatus)status;
-  if (name == 0) {
+  if (name == 0 || name[0] == 0) {
     moduleStatus.lastScanName[0] = 0;
   } else {
-    strncpy(moduleStatus.lastScanName, name, MIN(strlen(name), 255));
+    int len = MIN(strlen(name), 255);
+    strncpy(moduleStatus.lastScanName, name, len);
+    moduleStatus.lastScanName[len] = 0;
   }
 }

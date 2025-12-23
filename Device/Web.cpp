@@ -84,17 +84,22 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 
           case RSP_SCANRESULT: { // <Result:8> | <Result:8><Name:N><NULL>
             uint8_t status = *(payload + 4);
-            char* name = NULL;
+            char buf[256];
+            buf[0] = 0;
 
             if (status == 0) {
-              char buf[256];
-              strncpy(buf, (char*)(payload + 5), MIN(length - 5, 255));
-              name = buf;
+              int nameLen = MIN(length - 5, 255);
+              strncpy(buf, (char*)(payload + 5), nameLen);
+              buf[nameLen] = 0;
             }
 
-            setScanResult(status, name);
-            serialPrint("Scan Result: %d", status);
+            setScanResult(status, buf[0] == 0 ? NULL : buf);
+            serialPrint("Scan Result: %d | Name: \"%s\"", status, buf[0] == 0 ? "(null)" : buf);
             break;
+          }
+
+          case PKT_PING: {
+            webStatus.webSocket.sendBIN((uint8_t*)&PKT_PONG, 4);
           }
         }
       }
