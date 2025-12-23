@@ -68,7 +68,11 @@ app.UseCors("AllowMyFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseWebSockets();
+app.UseWebSockets(new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(30)
+});
+
 app.MapControllers();
 
 var moduleHandler = app.Services.GetRequiredService<IModuleHandler>();

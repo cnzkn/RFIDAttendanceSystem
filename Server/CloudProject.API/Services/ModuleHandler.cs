@@ -1,6 +1,10 @@
 ﻿namespace CloudProject.API.Services;
 
-public record WebSocketConnection(string Id, WebSocket Socket, DateTime ConnectedAt);
+public record WebSocketConnection(string Id, WebSocket Socket, DateTime ConnectedAt)
+{
+    public DateTime LastPongTime { get; set; } = DateTime.UtcNow;
+    public bool PingPending { get; set; }
+}
 
 public class ModuleHandler : IModuleHandler
 {
@@ -19,113 +23,165 @@ public class ModuleHandler : IModuleHandler
         _timetableManager = timetableManager;
     }
 
-    private List<string> alreadyScanned = new();
     public async Task HandleModuleAsync(string fingerprint, WebSocket? webSocket)
     {
+        ValueTask<ValueWebSocketReceiveResult> receiveTask;
+        
         var client = new WebSocketConnection(fingerprint, webSocket, DateTime.UtcNow);
         _connections[client.Id] = client;
+        var lastPingTime = DateTime.UtcNow;
 
         try
         {
             var buffer = new byte[4096];
+            receiveTask = webSocket.ReceiveAsync(new Memory<byte>(buffer), CancellationToken.None);
+            
             while (webSocket.State == WebSocketState.Open)
             {
-                var result = await webSocket.ReceiveAsync(buffer.AsMemory(0, buffer.Length), CancellationToken.None);
-
-                if (result.MessageType == WebSocketMessageType.Close)
+                var now = DateTime.UtcNow;
+                
+                if (client.PingPending && (now - client.LastPongTime) > TimeSpan.FromSeconds(30))
                 {
-                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                    _logger.LogWarning("PONG timeout for connection {fingerprint}. Closing...", client.Id);
+                    webSocket.Abort();
                     break;
                 }
 
-                if (result.MessageType == WebSocketMessageType.Binary)
+                if ((now - lastPingTime).TotalSeconds >= 30)
                 {
-                    using (var __ms = new MemoryStream(buffer, 0, result.Count))
-                    using (var br = new BinaryReader(__ms))
+                    using (var ms = new MemoryStream())
+                    using (var bw = new BinaryWriter(ms))
                     {
-                        var pkt = br.ReadInt32();
+                        bw.Write(0x474E4950);
+                        await webSocket.SendAsync(ms.ToArray(), WebSocketMessageType.Binary, true, CancellationToken.None);
+                        client.PingPending = true;
+                        client.LastPongTime = now;
+                    }
+                    lastPingTime = now;
+                }
 
-                        switch (pkt)
+                if (receiveTask.IsCompleted)
+                {
+                    var result = await receiveTask;
+                    
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                        break;
+                    }
+
+                    if (result.MessageType == WebSocketMessageType.Binary)
+                    {
+                        using (var __ms = new MemoryStream(buffer, 0, result.Count))
+                        using (var br = new BinaryReader(__ms))
                         {
-                            case 0x49514552: // PKT_REQUESTINFO
-                            {
-                                using (var ms = new MemoryStream())
-                                using (var bw = new BinaryWriter(ms))
-                                {
-                                    bw.Write(0x464E494D); // RSP_MODULEINFO
-                                    if (await _deviceManager.GetByFingerprintAsync(Convert.FromHexString(fingerprint)) is not { } device)
-                                    {
-                                        bw.Write("---"u8);
-                                        bw.Write((byte)0);
-                                        bw.Write("---"u8);
-                                        bw.Write((byte)0);
-                                    }
-                                    else
-                                    {
-                                        bw.Write(Encoding.UTF8.GetBytes(device.Classroom.Name));
-                                        bw.Write((byte)0);
+                            var pkt = br.ReadInt32();
 
-                                        try
+                            switch (pkt)
+                            {
+                                case 0x49514552: // PKT_REQUESTINFO
+                                {
+                                    using (var ms = new MemoryStream())
+                                    using (var bw = new BinaryWriter(ms))
+                                    {
+                                        bw.Write(0x464E494D); // RSP_MODULEINFO
+                                        if (await _deviceManager.GetByFingerprintAsync(Convert.FromHexString(fingerprint)) is not { } device)
                                         {
-                                            if (await _timetableManager.GetClassroomCurrentTimetableAsync(device.Classroom.Id!.Value, CancellationToken.None) is { } timetable)
+                                            bw.Write("---"u8);
+                                            bw.Write((byte)0);
+                                            bw.Write("---"u8);
+                                            bw.Write((byte)0);
+                                        }
+                                        else
+                                        {
+                                            bw.Write(Encoding.UTF8.GetBytes(device.Classroom.Name));
+                                            bw.Write((byte)0);
+
+                                            try
                                             {
-                                                bw.Write(Encoding.UTF8.GetBytes(timetable.Section.Course.Name));
-                                                bw.Write((byte)0);   
+                                                if (await _timetableManager.GetClassroomCurrentTimetableAsync(device.Classroom.Id!.Value, CancellationToken.None) is { } timetable)
+                                                {
+                                                    bw.Write(Encoding.UTF8.GetBytes(timetable.Section.Course.Name));
+                                                    bw.Write((byte)0);
+                                                }
+                                                else
+                                                {
+                                                    bw.Write("---"u8);
+                                                    bw.Write((byte)0);
+                                                }
                                             }
-                                            else
+                                            catch (InvalidOperationException)
                                             {
                                                 bw.Write("---"u8);
                                                 bw.Write((byte)0);
                                             }
+
                                         }
-                                        catch (InvalidOperationException)
+
+                                        await webSocket.SendAsync(ms.ToArray(), WebSocketMessageType.Binary, true,
+                                            CancellationToken.None);
+                                    }
+
+                                    break;
+                                }
+
+                                case 0x41514552: // PKT_SUBMITSCAN
+                                {
+                                    var length = br.ReadByte();
+                                    var uidBytes = br.ReadBytes(length);
+
+                                    var (status, name) = await _attendanceManager.RecordAttendanceAsync(Convert.FromHexString(fingerprint), uidBytes, CancellationToken.None);
+
+                                    using (var ms = new MemoryStream())
+                                    using (var bw = new BinaryWriter(ms))
+                                    {
+                                        bw.Write(0x53455253); // RSP_SCANRESULT
+                                        bw.Write((byte)status);
+
+                                        if (name is not null)
                                         {
-                                            bw.Write("---"u8);
+                                            bw.Write(Encoding.UTF8.GetBytes(name));
                                             bw.Write((byte)0);
                                         }
-                                        
+
+                                        await webSocket.SendAsync(ms.ToArray(), WebSocketMessageType.Binary, true,
+                                            CancellationToken.None);
                                     }
 
-                                    await webSocket.SendAsync(ms.ToArray(), WebSocketMessageType.Binary, true, CancellationToken.None);
+                                    break;
                                 }
-                                
-                                break;
-                            }
 
-                            case 0x41514552: // PKT_SUBMITSCAN
-                            {
-                                var length = br.ReadByte();
-                                var uidBytes = br.ReadBytes(length);
-
-                                var (status, name) = await _attendanceManager.RecordAttendanceAsync(Convert.FromHexString(fingerprint), uidBytes, CancellationToken.None);
-
-                                using (var ms = new MemoryStream())
-                                using (var bw = new BinaryWriter(ms))
+                                case 0x474E4950: // PKT_PING
                                 {
-                                    bw.Write(0x53455253); // RSP_SCANRESULT
-                                    bw.Write((byte)status);
-
-                                    if (name is not null)
+                                    using (var ms = new MemoryStream())
+                                    using (var bw = new BinaryWriter(ms))
                                     {
-                                        bw.Write(Encoding.UTF8.GetBytes(name));
-                                        bw.Write((byte)0);
+                                        bw.Write(0x474E4F50);
+                                        await webSocket.SendAsync(ms.ToArray(), WebSocketMessageType.Binary, true,
+                                            CancellationToken.None);
                                     }
-                                    
-                                    await webSocket.SendAsync(ms.ToArray(), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                                    break;
                                 }
 
-                                break;
-                            }
+                                case 0x474E4F50: // PKT_PONG
+                                {
+                                    if (_connections.TryGetValue(client.Id, out var conn))
+                                    {
+                                        conn.PingPending = false;
+                                        conn.LastPongTime = DateTime.UtcNow;
+                                    }
 
-                            default:
-                            {
-                                byte[] msg = [0];
-                                await webSocket.SendAsync(msg, WebSocketMessageType.Binary, true, CancellationToken.None);
-                                break;
+                                    break;
+                                }
                             }
                         }
                     }
+
+                    receiveTask = webSocket.ReceiveAsync(new Memory<byte>(buffer), CancellationToken.None);
                 }
+
+                await Task.Delay(50);
             }
         }
         catch (Exception ex)
@@ -134,6 +190,15 @@ public class ModuleHandler : IModuleHandler
         }
         finally
         {
+            try
+            {
+                webSocket.Dispose();
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
+            
             _connections.TryRemove(client.Id, out _);
             _logger.LogInformation("Client {fingerprint} disconnected.", client.Id);
         }
