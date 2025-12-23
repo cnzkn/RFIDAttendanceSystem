@@ -81,14 +81,14 @@ var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 
 lifetime.ApplicationStopping.Register(() =>
 {
-    Console.WriteLine("Application stopping, closing WebSockets...");
-    moduleHandler.CloseAllAsync(CancellationToken.None)
-        .GetAwaiter()
-        .GetResult();
+    Console.WriteLine("Application stopping...");
+
+    moduleHandler.CloseAllAsync(new CancellationTokenSource(TimeSpan.FromSeconds(3)).Token);
+    clientHandler.CloseAllAsync(new CancellationTokenSource(TimeSpan.FromSeconds(3)).Token);
     
-    clientHandler.CloseAllAsync(CancellationToken.None)
-        .GetAwaiter()
-        .GetResult();
+    Task.Delay(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+    
+    Environment.Exit(0);
 });
 
 
