@@ -29,8 +29,9 @@ public class DeviceController : ControllerEx
                 var hex = Convert.ToHexString(bytes);
                 device.IsOnline = _moduleHandler.IsConnected(hex);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Exception occurred while determining online status for device {DeviceId}", device.Id);
                 device.IsOnline = false;
             }
         }

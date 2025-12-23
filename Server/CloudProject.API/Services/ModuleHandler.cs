@@ -13,7 +13,7 @@ public class ModuleHandler : IModuleHandler
     public ModuleHandler(ILogger<ModuleHandler> logger, DeviceManager deviceManager, AttendanceManager attendanceManager, TimetableManager timetableManager)
     {
         _logger = logger;
-        _connections = new();
+        _connections = new(StringComparer.OrdinalIgnoreCase);
         _deviceManager = deviceManager;
         _attendanceManager = attendanceManager;
         _timetableManager = timetableManager;
