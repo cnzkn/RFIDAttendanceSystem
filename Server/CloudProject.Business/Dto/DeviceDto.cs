@@ -7,4 +7,5 @@ public class DeviceDto
     
     public ClassroomDto Classroom { get; set; }
     public string Fingerprint { get; set; }
+    public bool IsOnline { get; set; }
 }

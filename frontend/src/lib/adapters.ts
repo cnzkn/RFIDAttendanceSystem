@@ -20,9 +20,9 @@ export interface AttendanceHistorySessionDto {
 }
 
 export interface AttendanceTimetableDto {
-    id: string;
-    timeslot: BackendTimeslot;
-    sessions: AttendanceHistorySessionDto[];
+	id: string;
+	timeslot: BackendTimeslot;
+	sessions: AttendanceHistorySessionDto[];
 }
 
 export interface BackendAttendanceHistoryDto {
@@ -43,28 +43,30 @@ export interface BackendAttendanceHistoryDto {
  * C# DayOfWeek: Sunday=0, Monday=1, ..., Saturday=6
  */
 function toDayNum(day: string | number): number {
-    const dayMap: Record<string, number> = {
-        "Monday": 1,
-        "Tuesday": 2,
-        "Wednesday": 3,
-        "Thursday": 4,
-        "Friday": 5,
-        "Saturday": 6,
-        "Sunday": 7
-    };
+	const dayMap: Record<string, number> = {
+		Monday: 1,
+		Tuesday: 2,
+		Wednesday: 3,
+		Thursday: 4,
+		Friday: 5,
+		Saturday: 6,
+		Sunday: 7,
+	};
 
-    if (typeof day === "string") {
-        return dayMap[day] || 0;
-    }
-    
-    // If it's a number (0-6)
-    if (day === 0) return 7; // Sunday 0 -> 7
-    return day; // 1-6 match Mon-Sat
+	if (typeof day === "string") {
+		return dayMap[day] || 0;
+	}
+
+	// If it's a number (0-6)
+	if (day === 0) return 7; // Sunday 0 -> 7
+	return day; // 1-6 match Mon-Sat
 }
 
 // --- Adapters ---
 
-export function toUITimetable(backendEntry: BackendTimetableEntry): TimetableEntry {
+export function toUITimetable(
+	backendEntry: BackendTimetableEntry,
+): TimetableEntry {
 	return {
 		id: backendEntry.id,
 		course: backendEntry.section.course.name,
@@ -104,7 +106,9 @@ export function toUISession(wrapper: BackendSessionWrapper): SessionDetails {
 	};
 }
 
-export function toUIHistory(backendHistoryList: BackendAttendanceHistoryDto[]): CourseHistory {
+export function toUIHistory(
+	backendHistoryList: BackendAttendanceHistoryDto[],
+): CourseHistory {
 	if (!backendHistoryList || backendHistoryList.length === 0) {
 		return {
 			courseName: "",
@@ -113,7 +117,7 @@ export function toUIHistory(backendHistoryList: BackendAttendanceHistoryDto[]): 
 			students: [],
 			weeks: 0,
 			daysPerWeek: 0,
-            timetableIds: {}
+			timetableIds: {},
 		};
 	}
 
@@ -122,61 +126,63 @@ export function toUIHistory(backendHistoryList: BackendAttendanceHistoryDto[]): 
 	const courseCode = sectionDto.section.course.code.toString();
 	const sectionName = sectionDto.section.section;
 
-    const sortedTimetables = [...sectionDto.timetables].sort((a, b) => {
-         const da = toDayNum(a.timeslot.dayOfWeek);
-         const db = toDayNum(b.timeslot.dayOfWeek);
-         if(da !== db) return da - db;
-         return a.timeslot.timeslotNumber - b.timeslot.timeslotNumber;
-    });
+	const sortedTimetables = [...sectionDto.timetables].sort((a, b) => {
+		const da = toDayNum(a.timeslot.dayOfWeek);
+		const db = toDayNum(b.timeslot.dayOfWeek);
+		if (da !== db) return da - db;
+		return a.timeslot.timeslotNumber - b.timeslot.timeslotNumber;
+	});
 
-    const daysPerWeek = sortedTimetables.length;
-    let maxWeek = 0;
+	const daysPerWeek = sortedTimetables.length;
+	let maxWeek = 0;
 
-    const studentMap = new Map<string, HistoryStudent>();
-    const timetableIds: Record<number, string> = {}; // Map DayIndex -> TimetableId
-    
-    const lookup = new Map<string, { id: string; fullName: string }>();
-    sectionDto.students.forEach(s => {
-        lookup.set(s.id, s);
-        studentMap.set(s.id, {
-            id: s.id,
-            name: s.fullName,
-            attendance: {}
-        });
-    });
+	const studentMap = new Map<string, HistoryStudent>();
+	const timetableIds: Record<number, string> = {}; // Map DayIndex -> TimetableId
 
-    sortedTimetables.forEach((timetable, index) => {
-        const dayIdx = index + 1;
-        timetableIds[dayIdx] = timetable.id;
+	const lookup = new Map<string, { id: string; fullName: string }>();
+	sectionDto.students.forEach((s) => {
+		lookup.set(s.id, s);
+		studentMap.set(s.id, {
+			id: s.id,
+			name: s.fullName,
+			attendance: {},
+		});
+	});
 
-        timetable.sessions.forEach(session => {
-            if (session.weekNumber > maxWeek) maxWeek = session.weekNumber;
-            const weekIdx = session.weekNumber;
-            const key = `w${weekIdx}-${dayIdx}`;
+	sortedTimetables.forEach((timetable, index) => {
+		const dayIdx = index + 1;
+		timetableIds[dayIdx] = timetable.id;
 
-            const presentList = session.attendance["Present"] || [];
-            presentList.forEach(studentId => {
-                const st = studentMap.get(studentId);
-                if (st) st.attendance[key] = "present";
-            });
+		timetable.sessions.forEach((session) => {
+			if (session.weekNumber > maxWeek) maxWeek = session.weekNumber;
+			const weekIdx = session.weekNumber;
+			const key = `w${weekIdx}-${dayIdx}`;
 
-            const absentList = session.attendance["Absent"] || [];
-            absentList.forEach(studentId => {
-                const st = studentMap.get(studentId);
-                if (st && st.attendance[key] !== "present") {
-                    st.attendance[key] = "absent";
-                }
-            });
-        });
-    });
+			const presentList = session.attendance.Present || [];
+			presentList.forEach((studentId) => {
+				const st = studentMap.get(studentId);
+				if (st) st.attendance[key] = "present";
+			});
+
+			const absentList = session.attendance.Absent || [];
+			absentList.forEach((studentId) => {
+				const st = studentMap.get(studentId);
+				if (st && st.attendance[key] !== "present") {
+					st.attendance[key] = "absent";
+				}
+			});
+		});
+	});
 
 	return {
 		courseName,
 		courseCode,
 		section: sectionName,
-		students: Array.from(studentMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+		students: Array.from(studentMap.values()).sort((a, b) =>
+			a.name.localeCompare(b.name),
+		),
 		weeks: maxWeek,
 		daysPerWeek,
-        timetableIds
+		timetableIds,
 	};
 }

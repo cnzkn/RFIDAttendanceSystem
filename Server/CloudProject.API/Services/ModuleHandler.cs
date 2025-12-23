@@ -139,6 +139,11 @@ public class ModuleHandler : IModuleHandler
         }
     }
 
+    public bool IsConnected(string fingerprint)
+    {
+        return _connections.ContainsKey(fingerprint);
+    }
+
     public async Task CloseAllAsync(CancellationToken token)
     {
         foreach (var client in _connections.Values)

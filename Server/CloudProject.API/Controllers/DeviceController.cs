@@ -6,17 +6,35 @@ public class DeviceController : ControllerEx
 {
     private readonly ILogger<DeviceController> _logger;
     private readonly DeviceManager _deviceManager;
+    private readonly IModuleHandler _moduleHandler;
 
-    public DeviceController(ILogger<DeviceController> logger, DeviceManager deviceManager)
+    public DeviceController(ILogger<DeviceController> logger, DeviceManager deviceManager, IModuleHandler moduleHandler)
     {
         _logger = logger;
         _deviceManager = deviceManager;
+        _moduleHandler = moduleHandler;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetAllDevices(CancellationToken token)
     {
         var devices = await _deviceManager.GetAllDevicesAsync(token);
+        
+        foreach (var device in devices)
+        {
+            try 
+            {
+                // Convert Base64 fingerprint to Hex for lookup
+                var bytes = Convert.FromBase64String(device.Fingerprint);
+                var hex = Convert.ToHexString(bytes);
+                device.IsOnline = _moduleHandler.IsConnected(hex);
+            }
+            catch
+            {
+                device.IsOnline = false;
+            }
+        }
+
         return Ok(devices);
     }
 

@@ -32,6 +32,7 @@ function AdminDevicesComponent() {
 	const { data: devices = [], isLoading: loadingDevices } = useQuery({
 		queryKey: ["devices"],
 		queryFn: fetchDevices,
+		refetchInterval: 5000,
 	});
 
 	const sortedDevices = useMemo(() => {
@@ -142,10 +143,10 @@ function AdminDevicesComponent() {
 							<table className="w-full text-left border-collapse">
 								<thead>
 									<tr className="bg-black text-white uppercase text font-mono">
-										<th className="p-4 border-r border-gray-700">
+										<th className="p-4 border-r border-gray-200">
 											Fingerprint (Base64)
 										</th>
-										<th className="p-4 border-r border-gray-700">Classroom</th>
+										<th className="p-4 border-r border-gray-200">Classroom</th>
 										<th className="p-4 text-right">Actions</th>
 									</tr>
 								</thead>
@@ -155,11 +156,23 @@ function AdminDevicesComponent() {
 											key={device.id}
 											className="border-b-2 border-black transition-colors group"
 										>
-											<td className="p-4 font-mono font-bold">
-												{device.fingerprint}
+											<td className="font-mono font-bold">
+												<div className="flex items-center">
+													<div
+														className={`w-6 h-6 mx-4 rounded-full border-2 border-black ${
+															device.isOnline ? "bg-green-500" : "bg-red-500"
+														}`}
+														title={device.isOnline ? "Online" : "Offline"}
+													/>
+													<span className="font-mono font-bold">
+														{device.fingerprint}
+													</span>
+												</div>
 											</td>
-											<td className="p-4 font-bold uppercase">
-												{device.classroom?.name || "Unassigned"}
+											<td>
+												<span className="font-bold uppercase">
+													{device.classroom?.name || "Unassigned"}
+												</span>
 											</td>
 											<td className="p-4 text-right flex justify-end gap-2">
 												<BlockyButton

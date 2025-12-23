@@ -45,7 +45,7 @@ export interface CourseHistory {
 	students: HistoryStudent[];
 	weeks: number;
 	daysPerWeek: number;
-    timetableIds: Record<number, string>;
+	timetableIds: Record<number, string>;
 }
 
 // --- Backend Types ---
@@ -257,10 +257,7 @@ export async function fetchCourseHistory(
 	return toUIHistory(data);
 }
 
-export async function exportHistoryCsv(
-	courseCode: string,
-	section: string,
-) {
+export async function exportHistoryCsv(courseCode: string, section: string) {
 	console.log("API: exportHistoryCsv called", { courseCode, section });
 
 	const response = await fetch(
@@ -338,7 +335,11 @@ export async function updateStudentStatus(
 		headers: {
 			"Content-Type": "application/json",
 		},
-		body: JSON.stringify({ timetableId: sessionId, attendeeId: studentId, status }),
+		body: JSON.stringify({
+			timetableId: sessionId,
+			attendeeId: studentId,
+			status,
+		}),
 		credentials: "include",
 	});
 
@@ -383,6 +384,7 @@ export interface BackendDevice {
 	id: string;
 	classroom: BackendClassroom;
 	fingerprint: string;
+	isOnline: boolean;
 }
 
 export interface CreateDeviceRequest {
@@ -430,11 +432,11 @@ export async function updateDevice(
 	data: CreateDeviceRequest,
 ): Promise<BackendDevice> {
 	console.log("API: updateDevice called", id, data);
-    // Transform frontend "CreateDeviceRequest" to backend "UpdateDeviceRequestDto"
-    const payload = {
-        newFingerprint: data.fingerprint ? data.fingerprint : null, // Handle potential empty string if logic requires
-        newClassroomId: data.classroomId
-    };
+	// Transform frontend "CreateDeviceRequest" to backend "UpdateDeviceRequestDto"
+	const payload = {
+		newFingerprint: data.fingerprint ? data.fingerprint : null, // Handle potential empty string if logic requires
+		newClassroomId: data.classroomId,
+	};
 
 	const response = await fetch(`${API_BASE_URL}/Device/${id}`, {
 		method: "PUT",
@@ -460,8 +462,8 @@ export async function deleteDevice(id: string) {
 
 export interface HistoryUpdateItem {
 	attendeeId: string;
-    timetableId: string;
-    weekNumber?: number;
+	timetableId: string;
+	weekNumber?: number;
 	status: "present" | "absent" | null;
 }
 
