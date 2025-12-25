@@ -266,7 +266,7 @@ void displayResultScreen(AttendanceStatus status) {
     lcdPrint(1, "   No lecture now   ");
   } else if (status == SCAN_NOT_REGISTERED) {
     lcdPrint(1, " Not registered in  ");
-    lcdPrint(2, "     this lecture   ");
+    lcdPrint(2, "    this lecture    ");
   } else if (status == SCAN_UNRECOGNIZED_ID) {
     lcdPrint(1, " Unrecognized card  ");
   } else if (status == SCAN_ERROR) {
