@@ -8,7 +8,7 @@ This project is developed by the students of Middle East Technical University, N
 
 ## Device
 Contains the source code for our hardware, responsible for scanning ID cards and transmit information to the server.
-
+![Image of the hardware](hardware.jpg)
 
 ## Server
 Source code for our back-end service. Communicates with devices, provides an API for our front-end and coordinates project functionality. 
